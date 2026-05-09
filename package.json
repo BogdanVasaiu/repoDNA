@@ -1,0 +1,11 @@
+{
+  "name": "repodna",
+  "version": "1.0",
+  "type": "module",
+  "main": "main.mjs",
+  "scripts": {
+    "start": "node main.mjs",
+    "start:debug": "node main.mjs --debug",
+    "uninstall": "node uninstall.mjs"
+  }
+}

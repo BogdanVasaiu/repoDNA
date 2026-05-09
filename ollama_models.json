@@ -1,0 +1,600 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-05-09",
+  "description": "Curated list of Ollama-compatible models for code analysis and documentation generation (e.g. repoDNA). Sorted by min_vram_gb ascending. Cloud models have no VRAM requirement.",
+  "models": [
+    {
+      "id": "codegemma-2b",
+      "name": "CodeGemma 2B",
+      "family": "CodeGemma",
+      "type": "local",
+      "size_b": 2,
+      "ollama_model": "codegemma:2b",
+      "min_vram_gb": 4,
+      "context_k": 8,
+      "quality_stars": 2,
+      "speed_stars": 5,
+      "tags": [
+        "lightweight",
+        "fill-in-middle",
+        "google"
+      ],
+      "description": "Tiny Google code model; good for lightweight completion, weak on deep repo understanding."
+    },
+    {
+      "id": "stable-code-3b",
+      "name": "Stable-Code 3B",
+      "family": "Stable-Code",
+      "type": "local",
+      "size_b": 3,
+      "ollama_model": "stable-code",
+      "min_vram_gb": 4,
+      "context_k": 16,
+      "quality_stars": 2,
+      "speed_stars": 5,
+      "tags": [
+        "lightweight",
+        "fill-in-middle",
+        "stability-ai"
+      ],
+      "description": "3B code model with FIM and 16k context; solid autocomplete, limited reasoning."
+    },
+    {
+      "id": "starcoder2-3b",
+      "name": "StarCoder2 3B",
+      "family": "StarCoder2",
+      "type": "local",
+      "size_b": 3,
+      "ollama_model": "starcoder2:3b",
+      "min_vram_gb": 4,
+      "context_k": 16,
+      "quality_stars": 2,
+      "speed_stars": 5,
+      "tags": [
+        "lightweight",
+        "multi-language",
+        "bigcode"
+      ],
+      "description": "Lightweight StarCoder2 variant; fast multi-language code completion, shallow explanations."
+    },
+    {
+      "id": "qwen25-coder-1b5",
+      "name": "Qwen2.5-Coder 1.5B",
+      "family": "Qwen2.5-Coder",
+      "type": "local",
+      "size_b": 1.5,
+      "ollama_model": "qwen2.5-coder:1.5b",
+      "min_vram_gb": 4,
+      "context_k": 32,
+      "quality_stars": 2,
+      "speed_stars": 5,
+      "tags": [
+        "lightweight",
+        "qwen",
+        "alibaba"
+      ],
+      "description": "Very small Qwen code model; OK for small projects, limited global repo reasoning."
+    },
+    {
+      "id": "codegemma-7b",
+      "name": "CodeGemma 7B",
+      "family": "CodeGemma",
+      "type": "local",
+      "size_b": 7,
+      "ollama_model": "codegemma:7b-instruct",
+      "min_vram_gb": 8,
+      "context_k": 8,
+      "quality_stars": 3,
+      "speed_stars": 4,
+      "tags": [
+        "instruction-tuned",
+        "google",
+        "fill-in-middle"
+      ],
+      "description": "Instruction-tuned Google code model; good NL↔code, decent summaries for medium repos."
+    },
+    {
+      "id": "starcoder2-7b",
+      "name": "StarCoder2 7B",
+      "family": "StarCoder2",
+      "type": "local",
+      "size_b": 7,
+      "ollama_model": "starcoder2:7b",
+      "min_vram_gb": 8,
+      "context_k": 16,
+      "quality_stars": 3,
+      "speed_stars": 4,
+      "tags": [
+        "multi-language",
+        "fill-in-middle",
+        "bigcode"
+      ],
+      "description": "Modern multi-lang code model; strong FIM and completion, average high-level documentation."
+    },
+    {
+      "id": "qwen25-coder-7b",
+      "name": "Qwen2.5-Coder 7B",
+      "family": "Qwen2.5-Coder",
+      "type": "local",
+      "size_b": 7,
+      "ollama_model": "qwen2.5-coder:7b",
+      "min_vram_gb": 8,
+      "context_k": 128,
+      "quality_stars": 4,
+      "speed_stars": 4,
+      "tags": [
+        "balanced",
+        "recommended",
+        "qwen",
+        "alibaba"
+      ],
+      "description": "Very balanced code model; great for repo scanning, refactors and concise module summaries."
+    },
+    {
+      "id": "qwen3-coder-next-moe",
+      "name": "Qwen3-Coder-Next (MoE)",
+      "family": "Qwen3-Coder",
+      "type": "local",
+      "size_b": 80,
+      "active_params_b": 3,
+      "ollama_model": "qwen3-coder-next",
+      "min_vram_gb": 8,
+      "context_k": 128,
+      "quality_stars": 4,
+      "speed_stars": 4,
+      "tags": [
+        "moe",
+        "coding-agent",
+        "qwen",
+        "alibaba"
+      ],
+      "description": "New MoE coder; strong for coding agents and multi-file reasoning with modest VRAM."
+    },
+    {
+      "id": "granite-code-8b",
+      "name": "Granite-Code 8B",
+      "family": "Granite-Code",
+      "type": "local",
+      "size_b": 8,
+      "ollama_model": "granite-code:8b",
+      "min_vram_gb": 10,
+      "context_k": 8,
+      "quality_stars": 3,
+      "speed_stars": 4,
+      "tags": [
+        "enterprise",
+        "ibm",
+        "stable"
+      ],
+      "description": "IBM enterprise-oriented code model; stable, conservative, good where compliance matters."
+    },
+    {
+      "id": "deepseek-coder-v2-16b",
+      "name": "DeepSeek-Coder-V2 16B",
+      "family": "DeepSeek-Coder",
+      "type": "local",
+      "size_b": 16,
+      "ollama_model": "deepseek-coder-v2:16b",
+      "min_vram_gb": 12,
+      "context_k": 128,
+      "quality_stars": 4,
+      "speed_stars": 3,
+      "tags": [
+        "moe",
+        "refactoring",
+        "deepseek"
+      ],
+      "description": "Strong MoE coder; excels at refactor and implementation details across files."
+    },
+    {
+      "id": "starcoder2-15b-instruct",
+      "name": "StarCoder2 15B (instruct)",
+      "family": "StarCoder2",
+      "type": "local",
+      "size_b": 15,
+      "ollama_model": "starcoder2:instruct",
+      "min_vram_gb": 13,
+      "context_k": 16,
+      "quality_stars": 4,
+      "speed_stars": 3,
+      "tags": [
+        "instruction-tuned",
+        "documentation",
+        "bigcode"
+      ],
+      "description": "Instruct version tuned for chat and explanations; good for human-readable repo overviews."
+    },
+    {
+      "id": "qwen25-coder-14b",
+      "name": "Qwen2.5-Coder 14B",
+      "family": "Qwen2.5-Coder",
+      "type": "local",
+      "size_b": 14,
+      "ollama_model": "qwen2.5-coder:14b",
+      "min_vram_gb": 16,
+      "context_k": 128,
+      "quality_stars": 4,
+      "speed_stars": 3,
+      "tags": [
+        "recommended",
+        "qwen",
+        "alibaba"
+      ],
+      "description": "Higher-capacity Qwen coder; noticeably better architecture summaries vs 7B at similar speed."
+    },
+    {
+      "id": "deepseek-r1-14b",
+      "name": "DeepSeek-R1 14B",
+      "family": "DeepSeek-R1",
+      "type": "local",
+      "size_b": 14,
+      "ollama_model": "deepseek-r1:14b",
+      "min_vram_gb": 16,
+      "context_k": 64,
+      "quality_stars": 4,
+      "speed_stars": 2,
+      "tags": [
+        "reasoning",
+        "chain-of-thought",
+        "deepseek"
+      ],
+      "description": "Reasoning-focused; great at explaining bugs and design trade-offs, slower due to long CoT."
+    },
+    {
+      "id": "codestral-22b",
+      "name": "Codestral 22B",
+      "family": "Codestral",
+      "type": "local",
+      "size_b": 22,
+      "ollama_model": "codestral:22b",
+      "min_vram_gb": 18,
+      "context_k": 32,
+      "quality_stars": 4,
+      "speed_stars": 2,
+      "tags": [
+        "mistral",
+        "multi-language",
+        "fill-in-middle"
+      ],
+      "description": "Mistral's 22B code model; very strong multi-language code gen and tests, concise outputs."
+    },
+    {
+      "id": "gpt-oss-20b",
+      "name": "GPT-OSS 20B",
+      "family": "GPT-OSS",
+      "type": "local",
+      "size_b": 20,
+      "ollama_model": "gpt-oss:20b",
+      "min_vram_gb": 18,
+      "context_k": 131,
+      "quality_stars": 4,
+      "speed_stars": 2,
+      "tags": [
+        "openai",
+        "reasoning",
+        "agentic"
+      ],
+      "description": "Open-weight GPT-class model; good balance of coding, reasoning and natural explanations."
+    },
+    {
+      "id": "qwen3-coder-30b",
+      "name": "Qwen3-Coder 30B",
+      "family": "Qwen3-Coder",
+      "type": "local",
+      "size_b": 30,
+      "ollama_model": "qwen3-coder:30b",
+      "min_vram_gb": 20,
+      "context_k": 262,
+      "quality_stars": 5,
+      "speed_stars": 2,
+      "tags": [
+        "coding-agent",
+        "tool-use",
+        "qwen",
+        "alibaba"
+      ],
+      "description": "High-end coder/agent; excellent for large repos, tool-use and detailed design docs."
+    },
+    {
+      "id": "qwen25-coder-32b",
+      "name": "Qwen2.5-Coder 32B",
+      "family": "Qwen2.5-Coder",
+      "type": "local",
+      "size_b": 32,
+      "ollama_model": "qwen2.5-coder:32b",
+      "min_vram_gb": 22,
+      "context_k": 128,
+      "quality_stars": 5,
+      "speed_stars": 2,
+      "tags": [
+        "flagship",
+        "sota",
+        "recommended",
+        "qwen",
+        "alibaba"
+      ],
+      "description": "Flagship open code model; near GPT-4o on many coding benchmarks, ideal for golden claude.md."
+    },
+    {
+      "id": "codellama-family",
+      "name": "CodeLlama (7B–70B)",
+      "family": "CodeLlama",
+      "type": "local",
+      "size_b": null,
+      "ollama_model": "codellama",
+      "min_vram_gb": 8,
+      "context_k": 100,
+      "quality_stars": 3,
+      "speed_stars": 3,
+      "tags": [
+        "meta",
+        "classic",
+        "fallback",
+        "multi-size"
+      ],
+      "description": "Older but solid Meta code family; stable fallback, weaker than Qwen/DeepSeek on new evals."
+    },
+    {
+      "id": "gpt-oss-20b-cloud",
+      "name": "GPT-OSS 20B Cloud",
+      "family": "GPT-OSS",
+      "type": "cloud",
+      "size_b": 20,
+      "ollama_model": "gpt-oss:20b-cloud",
+      "min_vram_gb": 0,
+      "context_k": 131,
+      "quality_stars": 4,
+      "speed_stars": 4,
+      "tags": [
+        "openai",
+        "cloud",
+        "api-key-required"
+      ],
+      "description": "Lightweight GPT-class cloud model; great for small-to-mid repos, fast responses."
+    },
+    {
+      "id": "gpt-oss-120b-cloud",
+      "name": "GPT-OSS 120B Cloud",
+      "family": "GPT-OSS",
+      "type": "cloud",
+      "size_b": 120,
+      "ollama_model": "gpt-oss:120b-cloud",
+      "min_vram_gb": 0,
+      "context_k": 131,
+      "quality_stars": 5,
+      "speed_stars": 4,
+      "tags": [
+        "openai",
+        "cloud",
+        "api-key-required",
+        "recommended"
+      ],
+      "description": "Recommended best general cloud model by Ollama; ideal for large repos and deep explanations."
+    },
+    {
+      "id": "devstral-small-2-24b-cloud",
+      "name": "Devstral Small 2 24B Cloud",
+      "family": "Devstral",
+      "type": "cloud",
+      "size_b": 24,
+      "ollama_model": "devstral-small-2:24b-cloud",
+      "min_vram_gb": 0,
+      "context_k": 262,
+      "quality_stars": 4,
+      "speed_stars": 4,
+      "tags": [
+        "mistral",
+        "cloud",
+        "api-key-required",
+        "coding-agent"
+      ],
+      "description": "Smaller Devstral variant; fast and capable, good for repo scanning with lower latency."
+    },
+    {
+      "id": "devstral-2-123b-cloud",
+      "name": "Devstral 2 123B Cloud",
+      "family": "Devstral",
+      "type": "cloud",
+      "size_b": 123,
+      "ollama_model": "devstral-2:123b-cloud",
+      "min_vram_gb": 0,
+      "context_k": 262,
+      "quality_stars": 5,
+      "speed_stars": 3,
+      "tags": [
+        "mistral",
+        "cloud",
+        "api-key-required",
+        "coding-agent"
+      ],
+      "description": "Mistral's coding-agent model designed for agentic workflows and code-heavy tasks."
+    },
+    {
+      "id": "qwen3-next-80b-cloud",
+      "name": "Qwen3-Next 80B Cloud",
+      "family": "Qwen3",
+      "type": "cloud",
+      "size_b": 80,
+      "ollama_model": "qwen3-next:80b-cloud",
+      "min_vram_gb": 0,
+      "context_k": 262,
+      "quality_stars": 5,
+      "speed_stars": 3,
+      "tags": [
+        "qwen",
+        "cloud",
+        "api-key-required"
+      ],
+      "description": "Large general-purpose Qwen3; strong at both code and natural-language documentation."
+    },
+    {
+      "id": "deepseek-v3-1-671b-cloud",
+      "name": "DeepSeek-V3.1 671B Cloud",
+      "family": "DeepSeek-V3",
+      "type": "cloud",
+      "size_b": 671,
+      "ollama_model": "deepseek-v3.1:671b-cloud",
+      "min_vram_gb": 0,
+      "context_k": 164,
+      "quality_stars": 5,
+      "speed_stars": 3,
+      "tags": [
+        "deepseek",
+        "cloud",
+        "api-key-required",
+        "sota"
+      ],
+      "description": "Massive MoE model; SOTA-class code generation and repo reasoning, no VRAM needed."
+    },
+    {
+      "id": "qwen3-coder-480b-cloud",
+      "name": "Qwen3-Coder 480B Cloud",
+      "family": "Qwen3-Coder",
+      "type": "cloud",
+      "size_b": 480,
+      "ollama_model": "qwen3-coder:480b-cloud",
+      "min_vram_gb": 0,
+      "context_k": 262,
+      "quality_stars": 5,
+      "speed_stars": 3,
+      "tags": [
+        "qwen",
+        "cloud",
+        "api-key-required",
+        "flagship",
+        "coding-agent"
+      ],
+      "description": "Flagship cloud coder; enormous coding context, best quality for full-project docs."
+    },
+    {
+      "id": "nemotron-3-nano-30b-cloud",
+      "name": "Nemotron-3 Nano 30B Cloud",
+      "family": "Nemotron",
+      "type": "cloud",
+      "size_b": 30,
+      "ollama_model": "nemotron-3-nano:30b-cloud",
+      "min_vram_gb": 0,
+      "context_k": 1000,
+      "quality_stars": 4,
+      "speed_stars": 3,
+      "tags": [
+        "nvidia",
+        "cloud",
+        "api-key-required",
+        "long-context"
+      ],
+      "description": "NVIDIA model with 1M context window; perfect for monorepos or very large codebases."
+    },
+    {
+      "id": "deepseek-v4-flash-cloud",
+      "name": "DeepSeek-V4 Flash Cloud",
+      "family": "DeepSeek-V4",
+      "type": "cloud",
+      "size_b": null,
+      "ollama_model": "deepseek-v4-flash:cloud",
+      "min_vram_gb": 0,
+      "context_k": 1000,
+      "quality_stars": 5,
+      "speed_stars": 4,
+      "tags": [
+        "deepseek",
+        "cloud",
+        "api-key-required",
+        "long-context",
+        "sota"
+      ],
+      "description": "Very large context + DeepSeek V4 quality; optimal for scanning huge repos in one pass."
+    },
+    {
+      "id": "kimi-k2-1t-cloud",
+      "name": "Kimi-K2 1T Cloud",
+      "family": "Kimi-K2",
+      "type": "cloud",
+      "size_b": 1000,
+      "ollama_model": "kimi-k2:1t-cloud",
+      "min_vram_gb": 0,
+      "context_k": 262,
+      "quality_stars": 5,
+      "speed_stars": 3,
+      "tags": [
+        "moonshot",
+        "cloud",
+        "api-key-required",
+        "moe",
+        "tool-use"
+      ],
+      "description": "Moonshot AI 1T-param MoE; excellent at complex multi-file reasoning and tool use."
+    },
+    {
+      "id": "kimi-k2-thinking-cloud",
+      "name": "Kimi-K2 Thinking Cloud",
+      "family": "Kimi-K2",
+      "type": "cloud",
+      "size_b": null,
+      "ollama_model": "kimi-k2-thinking:cloud",
+      "min_vram_gb": 0,
+      "context_k": 262,
+      "quality_stars": 5,
+      "speed_stars": 2,
+      "tags": [
+        "moonshot",
+        "cloud",
+        "api-key-required",
+        "reasoning",
+        "chain-of-thought"
+      ],
+      "description": "Chain-of-thought variant of Kimi-K2; slower but deeper analysis of complex codebases."
+    },
+    {
+      "id": "mistral-large-3-675b-cloud",
+      "name": "Mistral Large 3 675B Cloud",
+      "family": "Mistral Large",
+      "type": "cloud",
+      "size_b": 675,
+      "ollama_model": "mistral-large-3:675b-cloud",
+      "min_vram_gb": 0,
+      "context_k": 262,
+      "quality_stars": 5,
+      "speed_stars": 2,
+      "tags": [
+        "mistral",
+        "cloud",
+        "api-key-required",
+        "flagship"
+      ],
+      "description": "Massive Mistral flagship; top-tier reasoning and code, comparable to GPT-4 class."
+    }
+  ],
+  "presets": {
+    "entry": [
+      "codegemma-2b",
+      "stable-code-3b",
+      "qwen25-coder-1b5"
+    ],
+    "balanced": [
+      "qwen25-coder-7b",
+      "qwen3-coder-next-moe",
+      "deepseek-coder-v2-16b"
+    ],
+    "max_quality_local": [
+      "qwen25-coder-32b",
+      "qwen3-coder-30b"
+    ],
+    "cloud_fast": [
+      "gpt-oss-20b-cloud",
+      "devstral-small-2-24b-cloud",
+      "deepseek-v4-flash-cloud"
+    ],
+    "cloud_best": [
+      "qwen3-coder-480b-cloud",
+      "gpt-oss-120b-cloud",
+      "deepseek-v3-1-671b-cloud"
+    ]
+  },
+  "notes": {
+    "vram_values": "Approximate VRAM for Q4_K_M quantization; offloading to RAM is possible at the cost of speed.",
+    "quality_speed_scores": "Qualitative scores (1-5 stars) derived from public benchmarks (HumanEval, LiveCodeBench, t/s on RTX 40xx series) and community reports for the specific task of repo scanning + summary/doc generation.",
+    "cloud_requirement": "Cloud models require an Ollama API key (login at ollama.com) and run on Ollama's datacenter. No local VRAM required.",
+    "context_k": "Context window in thousands of tokens (k)."
+  }
+}
