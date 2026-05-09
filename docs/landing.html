@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>repoDNA — Generate AI context files for your codebase</title>
+  <meta name="description" content="repoDNA scans your codebase with a local AI model and generates context files for Claude, Cursor, Copilot, and more. Free, open-source, runs entirely on your machine.">
+  <meta property="og:title" content="repoDNA — Generate AI context files for your codebase">
+  <meta property="og:description" content="Scan your codebase with Ollama. Generate CLAUDE.md, .cursorrules, and more. No API keys required.">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" href="landing.css">
+</head>
+<body>
+
+<!-- ── NAVIGATION ──────────────────────────────────────────── -->
+<nav class="site-nav">
+  <a class="logo" href="#">
+    <svg id="dna-nav" viewBox="0 0 28 44" width="28" height="44" xmlns="http://www.w3.org/2000/svg"></svg>
+    <span class="logo-wordmark">
+      <span id="brand-nav"></span>
+    </span>
+  </a>
+  <span class="logo-badge" id="nav-version">loading…</span>
+
+  <div class="nav-gap"></div>
+
+  <div class="nav-meta">
+    <a class="nav-stars" href="https://github.com/BogdanVasaiu/repodna"
+       target="_blank" rel="noopener noreferrer">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="color:var(--amb)">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/>
+      </svg>
+      <span class="nav-star-count" id="star-count">—</span>
+      <span style="color:var(--t3)">stars</span>
+    </a>
+  </div>
+
+  <div class="nav-actions">
+    <a class="btn btn-ghost" href="https://github.com/BogdanVasaiu/repodna"
+       target="_blank" rel="noopener noreferrer">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+      </svg>
+      GitHub
+    </a>
+    <a class="btn btn-primary" href="#get-started">Get Started</a>
+  </div>
+</nav>
+
+<!-- ── HERO ────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow fade-in">
+      <span class="hero-eyebrow-dot"></span>
+      Free · Open Source · Runs Locally
+    </div>
+
+    <h1 class="hero-heading fade-in">
+      Generate <span class="hero-heading-accent">AI context files</span><br>
+      from any codebase.
+    </h1>
+
+    <p class="hero-sub fade-in">
+      repoDNA scans your project with a local Ollama model and writes the
+      structured context file your AI coding assistant needs — so every session
+      starts with full project understanding.
+    </p>
+
+    <div class="hero-cta fade-in">
+      <a class="btn btn-primary btn-lg" href="#get-started">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+        </svg>
+        Get Started
+      </a>
+      <a class="btn btn-ghost btn-lg" href="https://github.com/BogdanVasaiu/repodna"
+         target="_blank" rel="noopener noreferrer">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+        </svg>
+        View on GitHub
+      </a>
+    </div>
+
+    <div class="install-block fade-in">
+      <div class="install-block-bar">
+        <span class="install-dot dot-red"></span>
+        <span class="install-dot dot-amber"></span>
+        <span class="install-dot dot-green"></span>
+        <span class="install-block-title">terminal</span>
+      </div>
+      <div class="install-block-body">
+        <div class="install-line">
+          <span class="install-prompt">$</span>
+          <span class="install-cmd">git clone https://github.com/BogdanVasaiu/repodna</span>
+          <button class="install-copy-btn" onclick="copyInstall('git clone https://github.com/BogdanVasaiu/repodna', this)">copy</button>
+        </div>
+        <div class="install-line">
+          <span class="install-prompt">$</span>
+          <span class="install-cmd">cd repodna &amp;&amp; node main.mjs</span>
+          <button class="install-copy-btn" onclick="copyInstall('cd repodna && node main.mjs', this)">copy</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="install-requirements fade-in">
+      <span class="install-req-item">
+        <img src="../public/shared/assets/nodejs-icon.svg" width="14" height="14" alt="Node.js" style="object-fit:contain">
+        Node.js 18+
+      </span>
+      <span class="install-req-sep"></span>
+      <span class="install-req-item">
+        <img src="../public/shared/assets/ollama-icon.svg" width="14" height="14" alt="Ollama" style="object-fit:contain">
+        Ollama
+      </span>
+      <span class="install-req-sep"></span>
+      <span style="color:var(--a)">Windows · macOS · Linux</span>
+    </div>
+
+    <div class="hero-animation fade-in">
+      <iframe src="../public/shared/animation1-standalone.html"
+              title="repoDNA animation"
+              loading="lazy"
+              allowtransparency="true"
+              scrolling="no"></iframe>
+    </div>
+  </div>
+</section>
+
+<!-- ── STATS STRIP ──────────────────────────────────────────── -->
+<div class="stats-strip">
+  <div class="stats-strip-inner">
+    <div class="stat-item">
+      <span class="stat-value" id="stat-stars">—</span>
+      <span class="stat-label">GitHub Stars</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value blue">5</span>
+      <span class="stat-label">Wizard Steps</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value" id="stat-agents">12</span>
+      <span class="stat-label">AI Agents Supported</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value white">0</span>
+      <span class="stat-label">API Keys Required</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── HOW IT WORKS ─────────────────────────────────────────── -->
+<section class="section how-section" id="how-it-works">
+  <div class="section-inner">
+    <div class="section-label fade-in">How it works</div>
+    <h2 class="section-heading fade-in">Five steps. One command to start.</h2>
+    <p class="section-sub fade-in">
+      The interface guides you through every decision. No config files,
+      no CLI flags — just a clean wizard in your browser.
+    </p>
+
+    <div class="steps-v">
+
+      <div class="step-v-row fade-in">
+        <div class="step-v-num">01</div>
+        <div class="step-v-body">
+          <div class="step-v-title">Check your environment</div>
+          <p class="step-v-desc">
+            repoDNA verifies that Node.js and Ollama are running before anything else.
+            If either is missing, the interface shows exactly what to install for
+            your platform — you are never left guessing.
+          </p>
+          <span class="step-v-tag">node main.mjs — that is it</span>
+        </div>
+        <div class="step-v-visual">
+          <div class="step-v-frame">
+            <div class="step-v-bar">
+              <span class="install-dot dot-red"></span>
+              <span class="install-dot dot-amber"></span>
+              <span class="install-dot dot-green"></span>
+            </div>
+            <img src="assets/step-01.png" alt="Setup step"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="step-v-ph">assets/step-01.png</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-v-row fade-in">
+        <div class="step-v-num">02</div>
+        <div class="step-v-body">
+          <div class="step-v-title">Add your projects</div>
+          <p class="step-v-desc">
+            Register one or more local project paths with an optional description.
+            The description helps the AI understand the purpose of the codebase
+            before it even starts reading files. Projects are saved across sessions.
+          </p>
+          <span class="step-v-tag">Saved · remembered across sessions</span>
+        </div>
+        <div class="step-v-visual">
+          <div class="step-v-frame">
+            <div class="step-v-bar">
+              <span class="install-dot dot-red"></span>
+              <span class="install-dot dot-amber"></span>
+              <span class="install-dot dot-green"></span>
+            </div>
+            <img src="assets/step-02.png" alt="Projects step"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="step-v-ph">assets/step-02.png</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-v-row fade-in">
+        <div class="step-v-num">03</div>
+        <div class="step-v-body">
+          <div class="step-v-title">Select what to scan</div>
+          <p class="step-v-desc">
+            An intelligent algorithm examines your project structure and suggests
+            which folders and file types are safe to exclude — node_modules,
+            build artifacts, generated files. You review and confirm. Custom rules
+            are remembered per project.
+          </p>
+          <span class="step-v-tag">Smart defaults · user overrides always win</span>
+        </div>
+        <div class="step-v-visual">
+          <div class="step-v-frame">
+            <div class="step-v-bar">
+              <span class="install-dot dot-red"></span>
+              <span class="install-dot dot-amber"></span>
+              <span class="install-dot dot-green"></span>
+            </div>
+            <img src="assets/step-03.png" alt="File selection step"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="step-v-ph">assets/step-03.png</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-v-row fade-in">
+        <div class="step-v-num">04</div>
+        <div class="step-v-body">
+          <div class="step-v-title">Configure the analysis</div>
+          <p class="step-v-desc">
+            Choose the Ollama model, set analysis depth, and decide whether to skip
+            files unchanged since the last run. A model table shows community-tested
+            options ranked by quality, speed, and hardware requirements.
+          </p>
+          <span class="step-v-tag">Smart Update · only re-analyzes changed files</span>
+        </div>
+        <div class="step-v-visual">
+          <div class="step-v-frame">
+            <div class="step-v-bar">
+              <span class="install-dot dot-red"></span>
+              <span class="install-dot dot-amber"></span>
+              <span class="install-dot dot-green"></span>
+            </div>
+            <img src="assets/step-04.png" alt="Options step"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="step-v-ph">assets/step-04.png</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-v-row fade-in">
+        <div class="step-v-num">05</div>
+        <div class="step-v-body">
+          <div class="step-v-title">Watch it run — then use the output</div>
+          <p class="step-v-desc">
+            A live progress panel shows each file being processed, its markdown
+            content appearing in real time, and a running log. If a file fails,
+            retry it individually. The output is written directly to your project root.
+          </p>
+          <span class="step-v-tag">Live preview · retry per file · saved to project</span>
+        </div>
+        <div class="step-v-visual">
+          <div class="step-v-frame">
+            <div class="step-v-bar">
+              <span class="install-dot dot-red"></span>
+              <span class="install-dot dot-amber"></span>
+              <span class="install-dot dot-green"></span>
+            </div>
+            <img src="assets/step-05.png" alt="Run step"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="step-v-ph">assets/step-05.png</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ──────────────────────────────────────────────── -->
+<section class="section features">
+  <div class="section-inner">
+    <div class="section-label fade-in">Features</div>
+    <h2 class="section-heading fade-in">Built for real projects.</h2>
+    <p class="section-sub fade-in">
+      Not a wrapper around a cloud API. repoDNA runs entirely on your hardware,
+      respects your privacy, and handles the edge cases that matter.
+    </p>
+
+    <div class="features-grid">
+
+      <div class="feature-card fade-in">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Fully local and private</h3>
+        <p class="feature-desc">
+          All analysis runs through Ollama on your own machine. No data leaves
+          your environment, no cloud API is called, no account needed.
+          Your codebase stays yours.
+        </p>
+      </div>
+
+      <div class="feature-card fade-in" style="transition-delay:.06s">
+        <div class="feature-icon blue">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Adaptive precision</h3>
+        <p class="feature-desc">
+          Four analysis depths — Fast, Standard, Deep, and Adaptive. In Adaptive
+          mode the engine auto-selects depth per file based on size and complexity,
+          so small files are cheap and large ones get thorough coverage.
+        </p>
+      </div>
+
+      <div class="feature-card fade-in" style="transition-delay:.12s">
+        <div class="feature-icon man">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Smart file classifier</h3>
+        <p class="feature-desc">
+          Detects your project type — Node, Python, Rust, Go, and more — and
+          applies sensible defaults: skip node_modules, skip build output, skip
+          binaries. Every decision is visible and overridable.
+        </p>
+      </div>
+
+      <div class="feature-card fade-in" style="transition-delay:.04s">
+        <div class="feature-icon amb">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Smart Update</h3>
+        <p class="feature-desc">
+          An MD5 hash cache tracks every analyzed file. On subsequent runs only
+          added, modified, or deleted files are re-analyzed. Large codebases
+          stay fast after the first scan.
+        </p>
+      </div>
+
+      <div class="feature-card fade-in" style="transition-delay:.1s">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Multi-agent output</h3>
+        <p class="feature-desc">
+          Select your AI coding tool and repoDNA writes the correct format —
+          CLAUDE.md, .cursorrules, .windsurfrules, AGENTS.md, and more. One
+          scan, the right file for your workflow.
+        </p>
+      </div>
+
+      <div class="feature-card fade-in" style="transition-delay:.16s">
+        <div class="feature-icon blue">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+            <line x1="6" y1="6" x2="6.01" y2="6"/>
+            <line x1="6" y1="18" x2="6.01" y2="18"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Cross-platform</h3>
+        <p class="feature-desc">
+          Works on Windows, macOS, and Linux. Requires only Node.js 18 and Ollama.
+          No Docker, no native builds, no platform-specific setup.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── AGENTS CAROUSEL ───────────────────────────────────────── -->
+<section class="section agents-section">
+  <div class="section-inner" style="text-align:center">
+    <div class="section-label fade-in">Output formats</div>
+    <h2 class="section-heading fade-in">Works with the tools you already use.</h2>
+    <p class="section-sub fade-in" style="margin:0 auto 48px">
+      Pick your AI assistant before the run. repoDNA writes the context file in
+      the exact format and location that tool expects.
+    </p>
+  </div>
+
+  <div class="agents-carousel-wrap">
+    <div class="agents-track">
+
+      <!-- ── first copy ── -->
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Claude-icon.svg" alt="Claude" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Claude Code</div>
+        <div class="agent-pill-file">CLAUDE.md</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Cursor-icon.svg" alt="Cursor" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Cursor</div>
+        <div class="agent-pill-file">.cursorrules</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Copilot-icon.svg" alt="Copilot" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Copilot</div>
+        <div class="agent-pill-file">copilot-instructions.md</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Gemini-icon.svg" alt="Gemini" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Gemini CLI</div>
+        <div class="agent-pill-file">GEMINI.md</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Windsurf-icon.svg" alt="Windsurf" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Windsurf</div>
+        <div class="agent-pill-file">.windsurfrules</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Codex-icon.svg" alt="Codex" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Codex CLI</div>
+        <div class="agent-pill-file">AGENTS.md</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Cline-icon.svg" alt="Cline" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Cline</div>
+        <div class="agent-pill-file">.clinerules/</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/RooCode-icon.svg" alt="Roo Code" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Roo Code</div>
+        <div class="agent-pill-file">AGENTS.md</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Amp-icon.svg" alt="Amp" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Amp</div>
+        <div class="agent-pill-file">AGENT.md</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/OpenCode-icon.svg" alt="OpenCode" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">OpenCode</div>
+        <div class="agent-pill-file">AGENTS.md</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/OpenClaw-icon.svg" alt="OpenClaw" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">OpenClaw</div>
+        <div class="agent-pill-file">AGENTS.md</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Generic-icon.svg" alt="Generic" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Generic</div>
+        <div class="agent-pill-file">AGENTS.md</div>
+      </div>
+
+      <!-- ── second copy (seamless loop) ── -->
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Claude-icon.svg" alt="Claude" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Claude Code</div>
+        <div class="agent-pill-file">CLAUDE.md</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Cursor-icon.svg" alt="Cursor" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Cursor</div>
+        <div class="agent-pill-file">.cursorrules</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Copilot-icon.svg" alt="Copilot" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Copilot</div>
+        <div class="agent-pill-file">copilot-instructions.md</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Gemini-icon.svg" alt="Gemini" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Gemini CLI</div>
+        <div class="agent-pill-file">GEMINI.md</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Windsurf-icon.svg" alt="Windsurf" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Windsurf</div>
+        <div class="agent-pill-file">.windsurfrules</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Codex-icon.svg" alt="Codex" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Codex CLI</div>
+        <div class="agent-pill-file">AGENTS.md</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Cline-icon.svg" alt="Cline" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Cline</div>
+        <div class="agent-pill-file">.clinerules/</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/RooCode-icon.svg" alt="Roo Code" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Roo Code</div>
+        <div class="agent-pill-file">AGENTS.md</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Amp-icon.svg" alt="Amp" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Amp</div>
+        <div class="agent-pill-file">AGENT.md</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/OpenCode-icon.svg" alt="OpenCode" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">OpenCode</div>
+        <div class="agent-pill-file">AGENTS.md</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/OpenClaw-icon.svg" alt="OpenClaw" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">OpenClaw</div>
+        <div class="agent-pill-file">AGENTS.md</div>
+      </div>
+      <div class="agent-pill">
+        <div class="agent-pill-icon"><img src="../public/shared/assets/agents/Generic-icon.svg" alt="Generic" onerror="this.style.display='none'"></div>
+        <div class="agent-pill-name">Generic</div>
+        <div class="agent-pill-file">AGENTS.md</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="section-inner" style="text-align:center">
+    <p class="agents-note fade-in">
+      The agent list grows with every release. —
+      <a href="https://github.com/BogdanVasaiu/repodna/issues" target="_blank" rel="noopener" style="color:var(--a)">Open an issue</a>
+      if your tool is missing.
+    </p>
+  </div>
+</section>
+
+<!-- ── GET STARTED ───────────────────────────────────────────── -->
+<section class="section install-section" id="get-started">
+  <div class="section-inner">
+    <div class="section-label fade-in">Get started</div>
+    <h2 class="section-heading fade-in">Running in under a minute.</h2>
+    <p class="section-sub fade-in">Two dependencies. One command. The rest is handled by the UI.</p>
+
+    <div class="install-layout fade-in">
+
+      <!-- Left: steps + requirements -->
+      <div class="install-left">
+        <div class="install-steps-list">
+          <div class="install-step-item">
+            <div class="install-step-n">1</div>
+            <div class="install-step-info">
+              <div class="install-step-heading">Clone the repository</div>
+              <p class="install-step-sub">Download repoDNA from GitHub to any folder on your machine.</p>
+            </div>
+          </div>
+          <div class="install-step-item">
+            <div class="install-step-n">2</div>
+            <div class="install-step-info">
+              <div class="install-step-heading">Start the app</div>
+              <p class="install-step-sub">Run <code>node main.mjs</code> in the folder. The UI opens in your browser automatically.</p>
+            </div>
+          </div>
+          <div class="install-step-item">
+            <div class="install-step-n">3</div>
+            <div class="install-step-info">
+              <div class="install-step-heading">Follow the wizard</div>
+              <p class="install-step-sub">The interface checks your environment, walks through project setup, and runs the analysis — all in one guided flow.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="install-reqs">
+          <div class="install-reqs-label">Requirements</div>
+          <div class="install-req-row">
+            <span class="install-req-check">
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="#20e3a0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="install-req-name">Node.js</span>
+            <span class="install-req-sub">v18 or later · nodejs.org</span>
+          </div>
+          <div class="install-req-row">
+            <span class="install-req-check">
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="#20e3a0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="install-req-name">Ollama</span>
+            <span class="install-req-sub">Any version · ollama.com · free</span>
+          </div>
+        </div>
+
+        <div class="install-platforms">
+          <span class="platform-badge">
+            <svg width="12" height="12" viewBox="0 0 448 448" fill="currentColor"><path d="M0 0h192v192H0zm256 0h192v192H256zM0 256h192v192H0zm256 0h192v192H256z"/></svg>
+            Windows
+          </span>
+          <span class="platform-badge">
+            <svg width="12" height="13" viewBox="0 0 814 1000" fill="currentColor"><path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 790.7 0 663 0 541.8c0-207.8 135.4-317.7 268.9-317.7 99.7 0 180.2 66.4 236.8 66.4 54.9 0 144.1-70.4 254.6-70.4zm-115.6-173.6c46.5-56.2 80.1-134.2 80.1-212.2 0-10.9-.6-21.8-2.6-30.7-75.6 2.9-163.8 50.6-218.9 116.1-41.5 46.8-80.1 124.8-80.1 204.1 0 12.3 2 24.6 2.6 28.5 4.5.7 11.7 1.9 18.2 1.9 68 0 150-45.5 201-107.7z"/></svg>
+            macOS
+          </span>
+          <span class="platform-badge">
+            <svg width="13" height="13" viewBox="0 0 304.998 304.998" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <g>
+                <path d="M274.659,244.888c-8.944-3.663-12.77-8.524-12.4-15.777c0.381-8.466-4.422-14.667-6.703-17.117
+                  c1.378-5.264,5.405-23.474,0.004-39.291c-5.804-16.93-23.524-42.787-41.808-68.204c-7.485-10.438-7.839-21.784-8.248-34.922
+                  c-0.392-12.531-0.834-26.735-7.822-42.525C190.084,9.859,174.838,0,155.851,0c-11.295,0-22.889,3.53-31.811,9.684
+                  c-18.27,12.609-15.855,40.1-14.257,58.291c0.219,2.491,0.425,4.844,0.545,6.853c1.064,17.816,0.096,27.206-1.17,30.06
+                  c-0.819,1.865-4.851,7.173-9.118,12.793c-4.413,5.812-9.416,12.4-13.517,18.539c-4.893,7.387-8.843,18.678-12.663,29.597
+                  c-2.795,7.99-5.435,15.537-8.005,20.047c-4.871,8.676-3.659,16.766-2.647,20.505c-1.844,1.281-4.508,3.803-6.757,8.557
+                  c-2.718,5.8-8.233,8.917-19.701,11.122c-5.27,1.078-8.904,3.294-10.804,6.586c-2.765,4.791-1.259,10.811,0.115,14.925
+                  c2.03,6.048,0.765,9.876-1.535,16.826c-0.53,1.604-1.131,3.42-1.74,5.423c-0.959,3.161-0.613,6.035,1.026,8.542
+                  c4.331,6.621,16.969,8.956,29.979,10.492c7.768,0.922,16.27,4.029,24.493,7.035c8.057,2.944,16.388,5.989,23.961,6.913
+                  c1.151,0.145,2.291,0.218,3.39,0.218c11.434,0,16.6-7.587,18.238-10.704c4.107-0.838,18.272-3.522,32.871-3.882
+                  c14.576-0.416,28.679,2.462,32.674,3.357c1.256,2.404,4.567,7.895,9.845,10.724c2.901,1.586,6.938,2.495,11.073,2.495
+                  c0.001,0,0,0,0.001,0c4.416,0,12.817-1.044,19.466-8.039c6.632-7.028,23.202-16,35.302-22.551c2.7-1.462,5.226-2.83,7.441-4.065
+                  c6.797-3.768,10.506-9.152,10.175-14.771C282.445,250.905,279.356,246.811,274.659,244.888z M124.189,243.535
+                  c-0.846-5.96-8.513-11.871-17.392-18.715c-7.26-5.597-15.489-11.94-17.756-17.312c-4.685-11.082-0.992-30.568,5.447-40.602
+                  c3.182-5.024,5.781-12.643,8.295-20.011c2.714-7.956,5.521-16.182,8.66-19.783c4.971-5.622,9.565-16.561,10.379-25.182
+                  c4.655,4.444,11.876,10.083,18.547,10.083c1.027,0,2.024-0.134,2.977-0.403c4.564-1.318,11.277-5.197,17.769-8.947
+                  c5.597-3.234,12.499-7.222,15.096-7.585c4.453,6.394,30.328,63.655,32.972,82.044c2.092,14.55-0.118,26.578-1.229,31.289
+                  c-0.894-0.122-1.96-0.221-3.08-0.221c-7.207,0-9.115,3.934-9.612,6.283c-1.278,6.103-1.413,25.618-1.427,30.003
+                  c-2.606,3.311-15.785,18.903-34.706,21.706c-7.707,1.12-14.904,1.688-21.39,1.688c-5.544,0-9.082-0.428-10.551-0.651l-9.508-10.879
+                  C121.429,254.489,125.177,250.583,124.189,243.535z M136.254,64.149c-0.297,0.128-0.589,0.265-0.876,0.411
+                  c-0.029-0.644-0.096-1.297-0.199-1.952c-1.038-5.975-5-10.312-9.419-10.312c-0.327,0-0.656,0.025-1.017,0.08
+                  c-2.629,0.438-4.691,2.413-5.821,5.213c0.991-6.144,4.472-10.693,8.602-10.693c4.85,0,8.947,6.536,8.947,14.272
+                  C136.471,62.143,136.4,63.113,136.254,64.149z M173.94,68.756c0.444-1.414,0.684-2.944,0.684-4.532
+                  c0-7.014-4.45-12.509-10.131-12.509c-5.552,0-10.069,5.611-10.069,12.509c0,0.47,0.023,0.941,0.067,1.411
+                  c-0.294-0.113-0.581-0.223-0.861-0.329c-0.639-1.935-0.962-3.954-0.962-6.015c0-8.387,5.36-15.211,11.95-15.211
+                  c6.589,0,11.95,6.824,11.95,15.211C176.568,62.78,175.605,66.11,173.94,68.756z M169.081,85.08
+                  c-0.095,0.424-0.297,0.612-2.531,1.774c-1.128,0.587-2.532,1.318-4.289,2.388l-1.174,0.711c-4.718,2.86-15.765,9.559-18.764,9.952
+                  c-2.037,0.274-3.297-0.516-6.13-2.441c-0.639-0.435-1.319-0.897-2.044-1.362c-5.107-3.351-8.392-7.042-8.763-8.485
+                  c1.665-1.287,5.792-4.508,7.905-6.415c4.289-3.988,8.605-6.668,10.741-6.668c0.113,0,0.215,0.008,0.321,0.028
+                  c2.51,0.443,8.701,2.914,13.223,4.718c2.09,0.834,3.895,1.554,5.165,2.01C166.742,82.664,168.828,84.422,169.081,85.08z
+                  M205.028,271.45c2.257-10.181,4.857-24.031,4.436-32.196c-0.097-1.855-0.261-3.874-0.42-5.826
+                  c-0.297-3.65-0.738-9.075-0.283-10.684c0.09-0.042,0.19-0.078,0.301-0.109c0.019,4.668,1.033,13.979,8.479,17.226
+                  c2.219,0.968,4.755,1.458,7.537,1.458c7.459,0,15.735-3.659,19.125-7.049c1.996-1.996,3.675-4.438,4.851-6.372
+                  c0.257,0.753,0.415,1.737,0.332,3.005c-0.443,6.885,2.903,16.019,9.271,19.385l0.927,0.487c2.268,1.19,8.292,4.353,8.389,5.853
+                  c-0.001,0.001-0.051,0.177-0.387,0.489c-1.509,1.379-6.82,4.091-11.956,6.714c-9.111,4.652-19.438,9.925-24.076,14.803
+                  c-6.53,6.872-13.916,11.488-18.376,11.488c-0.537,0-1.026-0.068-1.461-0.206C206.873,288.406,202.886,281.417,205.028,271.45z
+                  M39.917,245.477c-0.494-2.312-0.884-4.137-0.465-5.905c0.304-1.31,6.771-2.714,9.533-3.313c3.883-0.843,7.899-1.714,10.525-3.308
+                  c3.551-2.151,5.474-6.118,7.17-9.618c1.228-2.531,2.496-5.148,4.005-6.007c0.085-0.05,0.215-0.108,0.463-0.108
+                  c2.827,0,8.759,5.943,12.177,11.262c0.867,1.341,2.473,4.028,4.331,7.139c5.557,9.298,13.166,22.033,17.14,26.301
+                  c3.581,3.837,9.378,11.214,7.952,17.541c-1.044,4.909-6.602,8.901-7.913,9.784c-0.476,0.108-1.065,0.163-1.758,0.163
+                  c-7.606,0-22.662-6.328-30.751-9.728l-1.197-0.503c-4.517-1.894-11.891-3.087-19.022-4.241c-5.674-0.919-13.444-2.176-14.732-3.312
+                  c-1.044-1.171,0.167-4.978,1.235-8.337c0.769-2.414,1.563-4.91,1.998-7.523C41.225,251.596,40.499,248.203,39.917,245.477z"/>
+              </g>
+            </svg>
+            Linux
+          </span>
+        </div>
+      </div>
+
+      <!-- Right: terminals -->
+      <div class="install-right">
+        <div class="mac-terminal">
+          <div class="mac-terminal-bar">
+            <span class="install-dot dot-red"></span>
+            <span class="install-dot dot-amber"></span>
+            <span class="install-dot dot-green"></span>
+            <span class="mac-terminal-title">Terminal</span>
+          </div>
+          <div class="install-block-body">
+            <div class="install-line">
+              <span class="install-prompt">$</span>
+              <span class="install-cmd">git clone https://github.com/BogdanVasaiu/repodna</span>
+              <button class="install-copy-btn" onclick="copyInstall('git clone https://github.com/BogdanVasaiu/repodna', this)">copy</button>
+            </div>
+            <div class="install-line">
+              <span class="install-prompt">$</span>
+              <span class="install-cmd">cd repodna</span>
+              <button class="install-copy-btn" onclick="copyInstall('cd repodna', this)">copy</button>
+            </div>
+            <div class="install-line">
+              <span class="install-prompt">$</span>
+              <span class="install-cmd">node main.mjs</span>
+              <button class="install-copy-btn" onclick="copyInstall('node main.mjs', this)">copy</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="install-note">
+          No npm install, no build step. All dependencies are part of Node.js or loaded on demand by the app.
+        </div>
+
+        <div class="mac-terminal" style="margin-top:12px">
+          <div class="mac-terminal-bar">
+            <span class="install-dot dot-red"></span>
+            <span class="install-dot dot-amber"></span>
+            <span class="install-dot dot-green"></span>
+            <span class="mac-terminal-title" style="color:var(--t4)">Remove all cached data</span>
+          </div>
+          <div class="install-block-body">
+            <div class="install-line">
+              <span class="install-prompt">$</span>
+              <span class="install-cmd" style="color:var(--err)">node uninstall.mjs --yes</span>
+              <button class="install-copy-btn" onclick="copyInstall('node uninstall.mjs', this)">copy</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Closing banner -->
+    <div class="install-closing fade-in">
+      <div>
+        <p class="closing-headline">Stop writing context files by hand.</p>
+        <p class="closing-sub">repoDNA is free, open source, and runs entirely on your machine. Your code stays yours.</p>
+      </div>
+      <a class="btn btn-primary btn-lg" href="https://github.com/BogdanVasaiu/repodna"
+         target="_blank" rel="noopener noreferrer">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+        </svg>
+        View on GitHub
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ────────────────────────────────────────────────── -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <a class="logo" href="#">
+        <svg id="dna-footer" viewBox="0 0 28 44" width="22" height="35" xmlns="http://www.w3.org/2000/svg"></svg>
+        <span class="logo-wordmark" style="font-size:17px">repoDNA</span>
+      </a>
+      <p class="footer-copy">
+        Local AI analysis for your codebase. Generates context files for
+        Claude, Cursor, Copilot, and more. Free and open source.
+      </p>
+    </div>
+    <div class="footer-links">
+      <a class="footer-link" href="https://github.com/BogdanVasaiu/repodna" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a class="footer-link" href="https://github.com/BogdanVasaiu/repodna/releases" target="_blank" rel="noopener noreferrer">Releases</a>
+      <a class="footer-link" href="https://github.com/BogdanVasaiu/repodna/issues" target="_blank" rel="noopener noreferrer">Issues</a>
+      <a class="footer-link" href="https://github.com/BogdanVasaiu/repodna/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>repoDNA &copy; <span id="footer-year"></span> — MIT License</span>
+    <span id="footer-version" style="color:var(--t4)"></span>
+  </div>
+</footer>
+
+<!-- ── SCRIPTS ───────────────────────────────────────────────── -->
+<script src="../public/shared/dna.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ── GITHUB API ─────────────────────────────────────────────
+  const REPO = 'BogdanVasaiu/repodna';
+
+  async function fetchGitHub() {
+    try {
+      const [repoRes, releaseRes] = await Promise.all([
+        fetch(`https://api.github.com/repos/${REPO}`, { cache: 'no-store' }),
+        fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { cache: 'no-store' }),
+      ]);
+
+      if (repoRes.ok) {
+        const repo = await repoRes.json();
+        const stars = repo.stargazers_count ?? 0;
+        const fmt = stars >= 1000
+          ? (stars / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
+          : String(stars);
+        const sc = document.getElementById('star-count');
+        const ss = document.getElementById('stat-stars');
+        if (sc) sc.textContent = fmt;
+        if (ss) ss.textContent = fmt;
+      }
+
+      if (releaseRes.ok) {
+        const rel = await releaseRes.json();
+        const tag = rel.tag_name || '';
+        if (tag) {
+          const nv = document.getElementById('nav-version');
+          const fv = document.getElementById('footer-version');
+          if (nv) nv.textContent = tag;
+          if (fv) fv.textContent = tag;
+        }
+      }
+    } catch (_) {}
+  }
+
+  fetchGitHub();
+
+  // ── YEAR ────────────────────────────────────────────────────
+  const yearEl = document.getElementById('footer-year');
+  if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+  // ── COPY ────────────────────────────────────────────────────
+  window.copyInstall = function (text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'copied';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1800);
+    }).catch(() => {});
+  };
+
+  // ── SCROLL FADE-IN ──────────────────────────────────────────
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.10, rootMargin: '0px 0px -32px 0px' });
+
+  document.querySelectorAll('.fade-in').forEach(el => io.observe(el));
+
+  // ── DNA + TYPEWRITER (shared/dna.js) ────────────────────────
+  const ACCENT = getComputedStyle(document.documentElement)
+    .getPropertyValue('--a').trim() || '#20e3a0';
+
+  makeDna('dna-nav', ACCENT);
+  makeDna('dna-footer', ACCENT);
+  typewriter('brand-nav');
+
+})();
+</script>
+
+</body>
+</html>
