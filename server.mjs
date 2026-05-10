@@ -38,6 +38,7 @@ import { getDefaultRules } from "./classifier.mjs";
 
 var GITHUB_REPO = "BogdanVasaiu/repodna";
 var _lastModelsRefresh = 0;
+var _updateChecked = false;
 var AGENT_TARGETS_SERVER = {
   claude: "CLAUDE.md",
   codex: "AGENTS.md",
@@ -1440,6 +1441,8 @@ export function startServer() {
 
       // ── API: Check for updates
       if (url.pathname === "/api/check-update") {
+        if (_updateChecked) { jsonOut({ ok: false }); return; }
+        _updateChecked = true;
         try {
           const ghRes = await fetch(
             `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`,
