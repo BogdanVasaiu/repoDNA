@@ -1,0 +1,55 @@
+/* repoDNA — design tokens shared by the app and landing page */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Backgrounds */
+  --bg:  #09090b;
+  --s1:  #101013;
+  --s2:  #141417;
+  --s3:  #1a1a1f;
+  --s4:  #202026;
+  --s5:  #27272e;
+
+  /* Borders */
+  --b1:  #1e1e24;
+  --b2:  #28282f;
+  --b3:  #35353d;
+
+  /* Text */
+  --t1:  #f4f4f6;
+  --t2:  #9898aa;
+  --t3:  #70708a;
+  --t4:  #55556a;
+
+  /* Accent */
+  --a:         #20e3a0;
+  --a-dim:     rgba(32, 227, 160, .10);
+  --a-glow:    rgba(32, 227, 160, .22);
+  --a-border:  rgba(32, 227, 160, .20);
+
+  /* Supporting colours */
+  --blue: #60a5fa;
+  --man:  #818cf8;
+  --amb:  #f59e0b;
+  --err:  #f87171;
+
+  /* App aliases (used in styles.css) */
+  --inc:     #20e3a0;
+  --inc-dim: rgba(32, 227, 160, .07);
+  --amb-dim: rgba(245, 158, 11,  .07);
+  --man-dim: rgba(129, 140, 248, .08);
+
+  /* Typography */
+  --font: 'DM Sans', system-ui, sans-serif;
+  --mono: 'DM Mono', 'Fira Mono', monospace;
+
+  /* Radii */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r:    9px;
+  --r-lg: 13px;
+  --r-xl: 18px;
+}

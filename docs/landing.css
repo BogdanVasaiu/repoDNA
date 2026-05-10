@@ -2,7 +2,7 @@
    repoDNA — Landing Page
 ═══════════════════════════════════════════════════════════ */
 
-@import url('../public/shared/tokens.css');
+@import url('shared/tokens.css');
 
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 
