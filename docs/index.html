@@ -164,13 +164,14 @@
       <div class="step-v-row fade-in">
         <div class="step-v-num">01</div>
         <div class="step-v-body">
-          <div class="step-v-title">Check your environment</div>
+          <div class="step-v-title">Ollama setup</div>
           <p class="step-v-desc">
-            repoDNA verifies that Node.js and Ollama are running before anything else.
-            If either is missing, the interface shows exactly what to install for
-            your platform — you are never left guessing.
+            Checks whether Ollama is running and lists all locally installed models.
+            If Ollama is missing, the interface shows the exact install command for your
+            platform. A curated model reference table lets you compare and pull the right
+            model before starting — ranked by quality, speed, and VRAM requirements.
           </p>
-          <span class="step-v-tag">node main.mjs — that is it</span>
+          <span class="step-v-tag">Ollama · model reference · pull from UI</span>
         </div>
         <div class="step-v-visual">
           <div class="step-v-frame">
@@ -193,9 +194,9 @@
           <p class="step-v-desc">
             Register one or more local project paths with an optional description.
             The description helps the AI understand the purpose of the codebase
-            before it even starts reading files. Projects are saved across sessions.
+            before it even starts reading files.
           </p>
-          <span class="step-v-tag">Saved · remembered across sessions</span>
+          <span class="step-v-tag">Multiple projects · per-project description</span>
         </div>
         <div class="step-v-visual">
           <div class="step-v-frame">
@@ -242,11 +243,11 @@
         <div class="step-v-body">
           <div class="step-v-title">Configure the analysis</div>
           <p class="step-v-desc">
-            Choose the Ollama model, set analysis depth, and decide whether to skip
-            files unchanged since the last run. A model table shows community-tested
-            options ranked by quality, speed, and hardware requirements.
+            Choose the Ollama model from your installed list, set the analysis depth,
+            and configure advanced options: Smart Update to skip unchanged files, and
+            an optional file tree embedded in the output.
           </p>
-          <span class="step-v-tag">Smart Update · only re-analyzes changed files</span>
+          <span class="step-v-tag">Smart Update · file tree · precision modes</span>
         </div>
         <div class="step-v-visual">
           <div class="step-v-frame">
@@ -269,9 +270,11 @@
           <p class="step-v-desc">
             A live progress panel shows each file being processed, its markdown
             content appearing in real time, and a running log. If a file fails,
-            retry it individually. The output is written directly to your project root.
+            retry it individually. Each result can also be edited safely from the UI —
+            changes are saved to the cache and the output is rebuilt from there,
+            never by re-reading your project files.
           </p>
-          <span class="step-v-tag">Live preview · retry per file · saved to project</span>
+          <span class="step-v-tag">Live preview · retry · edit from UI · cache-safe</span>
         </div>
         <div class="step-v-visual">
           <div class="step-v-frame">
