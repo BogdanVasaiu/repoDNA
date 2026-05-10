@@ -605,56 +605,32 @@ async function runAnalysis(config) {
         log("success", procFile.id);
       } else {
         var reason = result.error || "Unknown reason";
-        var fallbackContent =
-          "### `" + procFile.id + "`\n**Analysis skipped:** " + reason;
-        var fbCat = categorize(procFile.id);
-        upsertResult(fbCat, procFile.id, fallbackContent);
         appState.fileStatuses[procFile.id] = {
           status: "error",
           error: reason,
-          category: fbCat,
         };
         push("file_status", {
           file: procFile.id,
           status: "error",
           error: reason,
         });
-        var fbEvent = {
-          category: fbCat,
-          file: procFile.id,
-          content: fallbackContent,
-        };
-        upsertResultEvent(fbCat, procFile.id, fallbackContent);
-        push("result", fbEvent);
         appState.errors++;
         log("warn", "EMPTY: " + procFile.id + " - " + reason);
       }
     } catch (e) {
       if (signal.aborted) break;
       appState.errors++;
-      var errorContent = "### `" + procFile.id + "`\n**Error:** " + e.message;
-      var errCat = categorize(procFile.id);
-      upsertResult(errCat, procFile.id, errorContent);
       appState.fileStatuses[procFile.id] = {
         status: "error",
         error: e.message,
-        category: errCat,
       };
       push("file_status", {
         file: procFile.id,
         status: "error",
         error: e.message,
       });
-      var errEvent = {
-        category: errCat,
-        file: procFile.id,
-        content: errorContent,
-      };
-      upsertResultEvent(errCat, procFile.id, errorContent);
-      push("result", errEvent);
       log("error", "FAILED: " + procFile.id + " - " + e.message);
-    } // AFTER:
-
+    }
     appState.done++;
     completedFiles.add(procFile.id);
     var fileElapsedSec = (Date.now() - fileStart) / 1000; // moved up: needed for EWMA

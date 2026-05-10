@@ -3087,6 +3087,7 @@ function renderResults(cat) {
       '<span class="result-card-filename">' +
       escHtml(item.file) +
       '</span>' +
+      '<button class="result-retry-btn" onclick="window._retryFile(\'' + escHtml(item.file) + '\')" title="Re-analyse this file">↺ Retry</button>' +
       '<button class="result-edit-btn" onclick="window._editResultCard(this)" title="Edit this analysis">Edit</button>' +
       '<button class="result-copy-btn" onclick="window._copyResultCard(this)" title="Copy markdown">Copy</button>' +
       '</div><div class="result-card-body md-body">' +
