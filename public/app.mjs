@@ -2885,13 +2885,13 @@ function showDashboard() {
   // Always show preview panel
   document.getElementById("results-content").style.display = "none";
   document.getElementById("preview-panel").classList.add("active");
+  document.getElementById("results-panel").classList.remove("results-mode");
 
   if (!S.previewContent) {
     S.previewContent = buildInitialPreview();
   }
   renderPreview();
 
-  document.getElementById("done-bar").classList.remove("visible");
   document.getElementById("status-dot").className =
     "status-dot " +
     (S.runPhase === "paused"
@@ -2932,6 +2932,13 @@ window._exitToStart = async function () {
   S.dashboardShown = false;
   S.treeData = [];
   S.flatNodes = [];
+  // Reset done state
+  document.getElementById("dash-top").classList.remove("done");
+  document.getElementById("progress-fill").style.width = "0%";
+  document.getElementById("progress-label").textContent = "Waiting…";
+  var _nb = document.getElementById("btn-new-analysis");
+  if (_nb) _nb.classList.remove("done");
+  document.getElementById("current-file").textContent = "";
   // Switch to wizard at page 0
   document.getElementById("dashboard").classList.remove("visible");
   document.getElementById("wizard").style.display = "";
@@ -3015,17 +3022,21 @@ function updateProgress(d) {
 function onDone() {
   document.getElementById("status-dot").className = "status-dot done";
   _stopElapsedTimer();
-  var bar = document.getElementById("done-bar");
-  bar.classList.add("visible");
+
+  // Switch top bar to done state — CSS animation handles the rest
+  document.getElementById("dash-top").classList.add("done");
+
+  // Make "New Analysis" button prominent
+  var newBtn = document.getElementById("btn-new-analysis");
+  if (newBtn) newBtn.classList.add("done");
+
   var total = parseInt(document.getElementById("s-done").textContent) || 0;
   var errors = parseInt(document.getElementById("s-errors").textContent) || 0;
   var sub;
   if (total === 0 && S.previewContent) {
     var _cachedLabel = (
       AGENT_TARGETS[S.agentTarget] || AGENT_TARGETS.claude
-    ).file
-      .split("/")
-      .pop();
+    ).file.split("/").pop();
     if (S.deletedCount > 0) {
       var _dn = S.deletedCount;
       sub = "✓ " + _dn + " file" + (_dn > 1 ? "s" : "") + " deleted — " + _cachedLabel + " rebuilt from cache";
@@ -3040,11 +3051,10 @@ function onDone() {
         '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">No files to process.<br>Check your file selection or smart update rules.</div></div>';
   } else {
     var _doneLabel = (AGENT_TARGETS[S.agentTarget] || AGENT_TARGETS.claude).file
-      .split("/")
-      .pop();
+      .split("/").pop();
     sub = total + " files · " + errors + " errors · " + _doneLabel + " saved";
   }
-  document.getElementById("done-sub").textContent = sub;
+  document.getElementById("current-file").textContent = sub;
   updateRunControls();
 }
 // ═══════════════════════════════════════════════════════════

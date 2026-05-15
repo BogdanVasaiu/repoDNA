@@ -412,6 +412,7 @@
         <div class="progress-track">
           <div class="progress-fill" id="progress-fill" style="width:0%"></div>
         </div>
+        <div id="progress-done-msg"><span>Analysis Complete!</span></div>
         <div class="progress-label" id="progress-label">Waiting…</div>
         <div class="current-file-label" id="current-file"></div>
         <div class="spacer"></div>
@@ -443,22 +444,16 @@
             <div id="log-list"></div>
           </div>
         </div>
-        <div id="results-panel">
-          <div id="tab-bar"></div>
-          <div id="results-content">
-            <div class="empty-state">
-              <div class="empty-icon">⏳</div>
-              <div class="empty-text">Analysis starting…</div>
+        <div id="results-col">
+          <div id="results-panel">
+            <div id="tab-bar"></div>
+            <div id="results-content">
+              <div class="empty-state">
+                <div class="empty-icon">⏳</div>
+                <div class="empty-text">Analysis starting…</div>
+              </div>
             </div>
-          </div>
-          <div id="preview-panel"></div>
-          <div id="done-bar">
-            <div class="done-content">
-              <div class="done-text"><span class="done-icon">✅</span><span class="done-shimmer">Analysis Complete!</span></div>
-              <div class="done-sub" id="done-sub"></div>
-            </div>
-            <div class="spacer"></div>
-            <button class="btn btn-ghost" onclick="window._exitToStart()" title="Reset and start a new analysis">← New Analysis</button>
+            <div id="preview-panel"></div>
           </div>
         </div>
       </div>
