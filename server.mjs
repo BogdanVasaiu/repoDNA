@@ -1254,6 +1254,13 @@ export function startServer() {
       if (url.pathname === "/api/abort" && req.method === "POST") {
         if (runnerAbortController) runnerAbortController.abort();
         resumeAll();
+        // Clear the running animation on any in-flight file
+        for (var _sf in appState.fileStatuses) {
+          if (appState.fileStatuses[_sf] && appState.fileStatuses[_sf].status === "running") {
+            appState.fileStatuses[_sf] = { status: "error", error: "Stopped" };
+            push("file_status", { file: _sf, status: "error", error: "Stopped" });
+          }
+        }
         appState.phase = "done";
         push("phase", { phase: "done" });
         jsonOut({ ok: true });

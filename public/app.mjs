@@ -472,8 +472,24 @@ function connectSSE() {
     S.results[d.category].push({ file: d.file, content: d.content });
     renderTabs();
     if (!S.activeTabIsPreview) {
-      if (!S.activeTab || S.activeTab === d.category)
-        renderResults(S.activeTab || d.category);
+      if (!S.activeTab || S.activeTab === d.category) {
+        var _rc = document.getElementById("results-content");
+        var _editing = _rc && _rc.querySelector('.result-card[data-editing="true"]');
+        if (_editing) {
+          // A card is being edited — surgically add/update only the incoming card
+          // so the user's in-progress edit is never interrupted.
+          var _sel = '.result-card[data-file="' + CSS.escape(d.file) + '"]';
+          var _existing = _rc.querySelector(_sel);
+          if (!_existing) {
+            _rc.appendChild(createResultCard({ file: d.file, content: d.content }, d.category));
+          } else if (_existing.dataset.editing !== 'true') {
+            _rc.replaceChild(createResultCard({ file: d.file, content: d.content }, d.category), _existing);
+          }
+          // If the incoming file is itself being edited, skip — don't overwrite edit state.
+        } else {
+          renderResults(S.activeTab || d.category);
+        }
+      }
     }
   });
 
@@ -652,10 +668,9 @@ window._resumeRun = async function () {
 };
 window._stopRun = async function () {
   if (!confirm("Stop the analysis?")) return;
-  await fetch("/api/reset", { method: "POST" }).catch(function () {});
-  _stopElapsedTimer();
-  S.runPhase = "idle";
-  updateRunControls();
+  // Abort the runner but keep all state in memory so a page refresh can replay it.
+  // The SSE "phase: done" event will fire and call onDone() / updateRunControls().
+  await fetch("/api/abort", { method: "POST" }).catch(function () {});
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -742,9 +757,24 @@ function updateFileRow(fid) {
     if (!S.fileList.includes(fid)) S.fileList.push(fid);
     container.appendChild(newRow);
   }
-  // Scroll running file into view
+  // Scroll running file into view only when user is already at the bottom (chat-like behavior)
   var st = S.fileStatuses[fid] || {};
-  if (st.status === "running") newRow.scrollIntoView({ block: "nearest" });
+  if (st.status === "running") {
+    var atBottom = container.scrollHeight - container.scrollTop - container.clientHeight <= 60;
+    if (atBottom) newRow.scrollIntoView({ block: "nearest" });
+  }
+}
+
+function _refreshResultCard(fid) {
+  var container = document.getElementById("results-content");
+  if (!container) return;
+  var existing = container.querySelector('.result-card[data-file="' + CSS.escape(fid) + '"]');
+  if (!existing) return;
+  var cat = existing.dataset.cat;
+  var items = S.results[cat] || [];
+  var item = items.find(function (it) { return it.file === fid; });
+  if (!item) return;
+  container.replaceChild(createResultCard(item, cat), existing);
 }
 
 window._retryFile = async function (fid) {
@@ -752,6 +782,7 @@ window._retryFile = async function (fid) {
   S.retryingFiles.add(fid);
   S.fileStatuses[fid] = { status: "running" };
   updateFileRow(fid);
+  _refreshResultCard(fid); // exits edit mode and disables Edit button while retrying
   try {
     await fetch("/api/retry-file", {
       method: "POST",
@@ -3064,6 +3095,29 @@ function showPreviewPanel() {
   document.getElementById("results-panel").classList.remove("results-mode");
 }
 
+function createResultCard(item, cat) {
+  var card = document.createElement("div");
+  card.className = "result-card";
+  card.dataset.mdContent = item.content || '';
+  card.dataset.file = item.file || '';
+  card.dataset.cat = cat || '';
+  var ext = (item.file || "").match(/(\.[^.]+)$/);
+  var isRunning = (S.fileStatuses[item.file] || {}).status === 'running';
+  card.innerHTML =
+    '<div class="result-card-head">' +
+    getFileBadge(ext ? ext[1] : "") +
+    '<span class="result-card-filename">' +
+    escHtml(item.file) +
+    '</span>' +
+    '<button class="result-retry-btn" onclick="window._retryFile(\'' + escHtml(item.file) + '\')" title="Re-analyse this file">↺ Retry</button>' +
+    '<button class="result-edit-btn" ' + (isRunning ? 'disabled style="opacity:0.4;cursor:not-allowed" ' : '') + 'onclick="window._editResultCard(this)" title="Edit this analysis">Edit</button>' +
+    '<button class="result-copy-btn" onclick="window._copyResultCard(this)" title="Copy markdown">Copy</button>' +
+    '</div><div class="result-card-body md-body">' +
+    md2html(item.content || "") +
+    "</div>";
+  return card;
+}
+
 function renderResults(cat) {
   var container = document.getElementById("results-content");
   var items = S.results[cat] || [];
@@ -3074,26 +3128,7 @@ function renderResults(cat) {
   }
   container.innerHTML = "";
   for (var i = 0; i < items.length; i++) {
-    var item = items[i];
-    var card = document.createElement("div");
-    card.className = "result-card";
-    card.dataset.mdContent = item.content || '';
-    card.dataset.file = item.file || '';
-    card.dataset.cat = cat || '';
-    var ext = (item.file || "").match(/(\.[^.]+)$/);
-    card.innerHTML =
-      '<div class="result-card-head">' +
-      getFileBadge(ext ? ext[1] : "") +
-      '<span class="result-card-filename">' +
-      escHtml(item.file) +
-      '</span>' +
-      '<button class="result-retry-btn" onclick="window._retryFile(\'' + escHtml(item.file) + '\')" title="Re-analyse this file">↺ Retry</button>' +
-      '<button class="result-edit-btn" onclick="window._editResultCard(this)" title="Edit this analysis">Edit</button>' +
-      '<button class="result-copy-btn" onclick="window._copyResultCard(this)" title="Copy markdown">Copy</button>' +
-      '</div><div class="result-card-body md-body">' +
-      md2html(item.content || "") +
-      "</div>";
-    container.appendChild(card);
+    container.appendChild(createResultCard(items[i], cat));
   }
 }
 
@@ -3218,12 +3253,13 @@ window._copyPreview = function(btn) {
 
 function renderPreview() {
   var panel = document.getElementById("preview-panel");
-  var _label = (AGENT_TARGETS[S.agentTarget] || AGENT_TARGETS.claude).file
-    .split("/")
-    .pop();
   if (!S.previewContent) {
     S.previewContent = buildInitialPreview();
   }
+  // Capture before rebuild — innerHTML resets scrollTop to 0
+  var prevScrollTop = panel.scrollTop;
+  var prevScrollHeight = panel.scrollHeight;
+  var wasAtBottom = prevScrollHeight - prevScrollTop - panel.clientHeight <= 60;
   var badge = S.previewFinal
     ? '<span class="preview-final-badge">final</span>'
     : '<span class="preview-live-badge">● live</span>';
@@ -3239,7 +3275,12 @@ function renderPreview() {
     '</div><div class="md-body">' +
     md2html(S.previewContent) +
     "</div>";
-  panel.scrollTop = panel.scrollHeight;
+  if (wasAtBottom) {
+    panel.scrollTop = panel.scrollHeight;
+  } else {
+    // Compensate for content growth so the reading position stays anchored
+    panel.scrollTop = prevScrollTop + (panel.scrollHeight - prevScrollHeight);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
