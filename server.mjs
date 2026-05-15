@@ -177,18 +177,20 @@ function upsertResult(cat, fileId, content) {
   appState.results = catMapsToResults(catResultMaps);
 }
 
-function upsertResultEvent(cat, fileId, content) {
+function upsertResultEvent(cat, fileId, content, model, precision) {
   for (var i = 0; i < appState.resultEvents.length; i++) {
     if (appState.resultEvents[i].file === fileId) {
       appState.resultEvents[i] = {
         category: cat,
         file: fileId,
         content: content,
+        model: model,
+        precision: precision,
       };
       return;
     }
   }
-  appState.resultEvents.push({ category: cat, file: fileId, content: content });
+  appState.resultEvents.push({ category: cat, file: fileId, content: content, model: model, precision: precision });
 }
 
 async function runAnalysis(config) {
@@ -427,8 +429,8 @@ async function runAnalysis(config) {
       if (changedFileIdSet.has(_cachedId)) continue;  // will be re-analyzed
       var _cached = prevResults[_cachedId];
       upsertResult(_cached.category, _cachedId, _cached.content);
-      upsertResultEvent(_cached.category, _cachedId, _cached.content);
-      push("result", { category: _cached.category, file: _cachedId, content: _cached.content });
+      upsertResultEvent(_cached.category, _cachedId, _cached.content, _cached.model, _cached.precision);
+      push("result", { category: _cached.category, file: _cachedId, content: _cached.content, model: _cached.model, precision: _cached.precision });
     }
   }
 
@@ -600,8 +602,10 @@ async function runAnalysis(config) {
           category: cat,
           file: procFile.id,
           content: displayContent,
+          model: config.model,
+          precision: config.precision,
         };
-        upsertResultEvent(cat, procFile.id, displayContent);
+        upsertResultEvent(cat, procFile.id, displayContent, config.model, config.precision);
         push("result", resultEvent);
         log("success", procFile.id);
       } else {
@@ -738,8 +742,8 @@ async function drainRetryQueue() {
   retryRunning = true;
   retryLock = true;
   while (retryQueue.length > 0) {
-    var _fid = retryQueue.shift();
-    await _executeRetry(_fid);
+    var _item = retryQueue.shift();
+    await _executeRetry(_item.fileId, _item.precision);
     if (retryQueue.length > 0)
       await new Promise(function (r) { setTimeout(r, 800); });
   }
@@ -748,20 +752,25 @@ async function drainRetryQueue() {
 }
 
 // Public entry-point: enqueue fileId (deduplicated) and start the drain loop.
-function retryFile(fileId) {
-  if (!retryQueue.includes(fileId)) retryQueue.push(fileId);
+function retryFile(fileId, precision) {
+  if (!retryQueue.some(function(r) { return r.fileId === fileId; })) {
+    retryQueue.push({ fileId: fileId, precision: precision || null });
+  }
   drainRetryQueue().catch(function (e) {
     log("error", "Retry queue crashed: " + e.message);
   });
   return Promise.resolve({ ok: true });
 }
 
-async function _executeRetry(fileId) {
+async function _executeRetry(fileId, precisionOverride) {
   if (!appState.config) {
     log("error", "Retry skipped: no active config");
     return;
   }
   var config = appState.config;
+  var effectiveConfig = precisionOverride
+    ? Object.assign({}, config, { precision: precisionOverride })
+    : config;
   var filePath = join(config.projectPath, fileId);
   if (!existsSync(filePath)) {
     log("error", "Retry skipped: file not found: " + fileId);
@@ -772,13 +781,14 @@ async function _executeRetry(fileId) {
   var isNewCompletion = !completedFiles.has(fileId);
   appState.fileStatuses[fileId] = { status: "running" };
   push("file_status", { file: fileId, status: "running" });
-  log("info", "Retrying: " + fileId);
+  var retryLabel = precisionOverride ? fileId + " [" + precisionOverride + "]" : fileId;
+  log("info", "Retrying: " + retryLabel);
 
   try {
     var result = await analyzeFileWithOllama(
       filePath,
       config.projectPath,
-      config,
+      effectiveConfig,
       new AbortController().signal,
     );
 
@@ -792,8 +802,8 @@ async function _executeRetry(fileId) {
       push("file_status", { file: fileId, status: "ok" });
 
       upsertResult(cat, fileId, result.content);
-      upsertResultEvent(cat, fileId, result.content);
-      push("result", { category: cat, file: fileId, content: result.content }); // Mark as completed and update the counter if this is the first time
+      upsertResultEvent(cat, fileId, result.content, config.model, effectiveConfig.precision);
+      push("result", { category: cat, file: fileId, content: result.content, model: config.model, precision: effectiveConfig.precision }); // Mark as completed and update the counter if this is the first time
 
       completedFiles.add(fileId);
       if (isNewCompletion) {
@@ -917,6 +927,8 @@ function saveResultCache(resultCacheFile, events, prevResults, presentFileIds, n
         category: events[i].category,
         content: events[i].content,
         hash: newHashes ? newHashes[ef] : undefined,
+        model: events[i].model,
+        precision: events[i].precision,
       };
     }
     // Keep results only for files that still exist on disk but weren't in this run
@@ -1289,7 +1301,7 @@ export function startServer() {
           return;
         } // Non-blocking: respond immediately, run retry async
         jsonOut({ ok: true });
-        retryFile(retryBody.file).catch(function (e) {
+        retryFile(retryBody.file, retryBody.precision || null).catch(function (e) {
           log("error", "Retry crashed: " + e.message);
         });
         return;

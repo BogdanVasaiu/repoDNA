@@ -462,30 +462,42 @@ function connectSSE() {
   // ── result: client-side dedup by file id across all categories ──
   es.addEventListener("result", function (e) {
     var d = JSON.parse(e.data);
-    // Remove any existing entry for this file across ALL categories first
+    var newItem = { file: d.file, content: d.content, model: d.model || null, precision: d.precision || null };
+    // Update S.results in-place to preserve card order; remove from old category if it changed
+    var foundInPlace = false;
     for (var cat in S.results) {
-      S.results[cat] = S.results[cat].filter(function (item) {
-        return item.file !== d.file;
-      });
+      var _arr = S.results[cat];
+      for (var _j = 0; _j < _arr.length; _j++) {
+        if (_arr[_j].file === d.file) {
+          if (cat === d.category) {
+            _arr[_j] = newItem;
+            foundInPlace = true;
+          } else {
+            _arr.splice(_j, 1);
+          }
+          break;
+        }
+      }
+      if (foundInPlace) break;
     }
-    if (!S.results[d.category]) S.results[d.category] = [];
-    S.results[d.category].push({ file: d.file, content: d.content });
+    if (!foundInPlace) {
+      if (!S.results[d.category]) S.results[d.category] = [];
+      S.results[d.category].push(newItem);
+    }
     renderTabs();
     if (!S.activeTabIsPreview) {
       if (!S.activeTab || S.activeTab === d.category) {
         var _rc = document.getElementById("results-content");
-        var _editing = _rc && _rc.querySelector('.result-card[data-editing="true"]');
-        if (_editing) {
-          // A card is being edited — surgically add/update only the incoming card
-          // so the user's in-progress edit is never interrupted.
-          var _sel = '.result-card[data-file="' + CSS.escape(d.file) + '"]';
-          var _existing = _rc.querySelector(_sel);
-          if (!_existing) {
-            _rc.appendChild(createResultCard({ file: d.file, content: d.content }, d.category));
-          } else if (_existing.dataset.editing !== 'true') {
-            _rc.replaceChild(createResultCard({ file: d.file, content: d.content }, d.category), _existing);
+        var _cardSel = '.result-card[data-file="' + CSS.escape(d.file) + '"]';
+        var _existing = _rc && _rc.querySelector(_cardSel);
+        if (_existing) {
+          // Card already in DOM — replace in-place (keeps position) unless user is editing it
+          if (_existing.dataset.editing !== 'true') {
+            _rc.replaceChild(createResultCard(newItem, d.category), _existing);
           }
-          // If the incoming file is itself being edited, skip — don't overwrite edit state.
+        } else if (_rc && _rc.querySelector('.result-card[data-editing="true"]')) {
+          // Another card is being edited — just append the new one
+          _rc.appendChild(createResultCard(newItem, d.category));
         } else {
           renderResults(S.activeTab || d.category);
         }
@@ -777,7 +789,7 @@ function _refreshResultCard(fid) {
   container.replaceChild(createResultCard(item, cat), existing);
 }
 
-window._retryFile = async function (fid) {
+window._retryFile = async function (fid, precision) {
   if (S.retryingFiles.has(fid)) return;
   S.retryingFiles.add(fid);
   S.fileStatuses[fid] = { status: "running" };
@@ -787,13 +799,22 @@ window._retryFile = async function (fid) {
     await fetch("/api/retry-file", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ file: fid }),
+      body: JSON.stringify({ file: fid, precision: precision || null }),
     });
   } catch (e) {
     S.fileStatuses[fid] = { status: "error", error: e.message };
     updateFileRow(fid);
   }
   S.retryingFiles.delete(fid);
+};
+
+window._retryFileWithPrec = function (btn) {
+  var ctrl = btn.closest('.retry-ctrl');
+  var card = btn.closest('.result-card');
+  var sel = ctrl ? ctrl.querySelector('.retry-prec-sel') : null;
+  var fid = card ? card.dataset.file : null;
+  var prec = sel ? sel.value : null;
+  if (fid) window._retryFile(fid, prec);
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -3095,6 +3116,15 @@ function showPreviewPanel() {
   document.getElementById("results-panel").classList.remove("results-mode");
 }
 
+var _PREC_OPTS = ['fast', 'standard', 'deep', 'adaptive'];
+
+function _precSelect(currentPrec, disabled) {
+  var opts = _PREC_OPTS.map(function(p) {
+    return '<option value="' + p + '"' + (p === currentPrec ? ' selected' : '') + '>' + p + '</option>';
+  }).join('');
+  return '<select class="retry-prec-sel"' + (disabled ? ' disabled' : '') + ' title="Precision for retry">' + opts + '</select>';
+}
+
 function createResultCard(item, cat) {
   var card = document.createElement("div");
   card.className = "result-card";
@@ -3103,13 +3133,23 @@ function createResultCard(item, cat) {
   card.dataset.cat = cat || '';
   var ext = (item.file || "").match(/(\.[^.]+)$/);
   var isRunning = (S.fileStatuses[item.file] || {}).status === 'running';
+  var metaPrec = item.precision || S.precision || 'standard';
+  var metaModel = item.model || S.model || '';
+  var modelShort = metaModel ? metaModel.split('/').pop().slice(0, 22) : '';
+  var metaBadge = (item.precision || item.model)
+    ? '<span class="result-meta">' + escHtml(item.precision || '') + (modelShort ? ' · ' + escHtml(modelShort) : '') + '</span>'
+    : '';
   card.innerHTML =
     '<div class="result-card-head">' +
     getFileBadge(ext ? ext[1] : "") +
     '<span class="result-card-filename">' +
     escHtml(item.file) +
     '</span>' +
-    '<button class="result-retry-btn" onclick="window._retryFile(\'' + escHtml(item.file) + '\')" title="Re-analyse this file">↺ Retry</button>' +
+    metaBadge +
+    '<div class="retry-ctrl">' +
+    _precSelect(metaPrec, isRunning) +
+    '<button class="result-retry-btn"' + (isRunning ? ' disabled' : '') + ' onclick="window._retryFileWithPrec(this)" title="Re-analyse this file">↺ Retry</button>' +
+    '</div>' +
     '<button class="result-edit-btn" ' + (isRunning ? 'disabled style="opacity:0.4;cursor:not-allowed" ' : '') + 'onclick="window._editResultCard(this)" title="Edit this analysis">Edit</button>' +
     '<button class="result-copy-btn" onclick="window._copyResultCard(this)" title="Copy markdown">Copy</button>' +
     '</div><div class="result-card-body md-body">' +
