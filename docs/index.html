@@ -31,7 +31,7 @@
         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/>
       </svg>
       <span class="nav-star-count" id="star-count">—</span>
-      <span style="color:var(--t3)">stars</span>
+      <span class="nav-star-label" style="color:var(--t3)">stars</span>
     </a>
   </div>
 
@@ -116,14 +116,14 @@
       <span class="install-req-sep"></span>
       <span style="color:var(--a)">Windows · macOS · Linux</span>
     </div>
+  </div>
 
-    <div class="hero-animation fade-in">
-      <iframe src="shared/animation1-standalone.html"
-              title="repoDNA animation"
-              loading="lazy"
-              allowtransparency="true"
-              scrolling="no"></iframe>
-    </div>
+  <div class="hero-animation fade-in">
+    <iframe src="shared/animation1-standalone.html"
+            title="repoDNA animation"
+            loading="lazy"
+            allowtransparency="true"
+            scrolling="no"></iframe>
   </div>
 </section>
 
@@ -135,19 +135,87 @@
       <span class="stat-label">GitHub Stars</span>
     </div>
     <div class="stat-item">
-      <span class="stat-value blue">5</span>
-      <span class="stat-label">Wizard Steps</span>
-    </div>
-    <div class="stat-item">
-      <span class="stat-value" id="stat-agents">12</span>
+      <span class="stat-value blue">12+</span>
       <span class="stat-label">AI Agents Supported</span>
     </div>
     <div class="stat-item">
-      <span class="stat-value white">0</span>
-      <span class="stat-label">API Keys Required</span>
+      <span class="stat-value amb">4</span>
+      <span class="stat-label">Precision Modes</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value white">100%</span>
+      <span class="stat-label">Local &amp; Private</span>
     </div>
   </div>
 </div>
+
+<!-- ── VIDEO SERIES ───────────────────────────────────────────── -->
+<section class="section video-section" id="videos">
+  <div class="section-inner">
+    <div class="section-label fade-in">Watch</div>
+    <h2 class="section-heading fade-in">See it in action.</h2>
+    <p class="section-sub fade-in">
+      A short video series covering installation, setup, and real-world usage.
+    </p>
+
+    <div class="video-stage fade-in">
+
+      <!-- ── Main player ── -->
+      <div class="video-player-col">
+        <div class="video-player-wrap" id="vp-wrap">
+          <!-- Thumbnail / placeholder shown before play -->
+          <div class="video-thumb-overlay" id="vp-thumb-overlay">
+            <img class="video-thumb-img" id="vp-thumb-img" src="" alt="">
+            <div class="video-thumb-tint"></div>
+            <button class="vp-play-btn" id="vp-play-btn" onclick="vpPlay()" aria-label="Play video">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5,3 19,12 5,21"/>
+              </svg>
+            </button>
+          </div>
+          <!-- YouTube iframe, injected when play is clicked -->
+          <iframe id="vp-iframe" class="video-iframe" src="" title="repoDNA video"
+                  frameborder="0" allow="autoplay; fullscreen; picture-in-picture"></iframe>
+          <!-- Error overlay (embedding disabled, private, etc.) -->
+          <div class="vp-error-overlay" id="vp-error">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--t3)">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <p>This video can't be embedded.</p>
+            <a id="vp-error-link" class="btn btn-primary" href="#" target="_blank" rel="noopener noreferrer">Watch on YouTube</a>
+          </div>
+        </div>
+
+        <div class="video-meta">
+          <div class="video-meta-ep" id="vp-ep-label">Episode 1</div>
+          <div class="video-meta-title" id="vp-title">—</div>
+          <p class="video-meta-desc" id="vp-desc"></p>
+        </div>
+      </div>
+
+      <!-- ── Playlist ── -->
+      <div class="video-playlist-col">
+        <div class="video-playlist-header">
+          <span class="video-playlist-label">Episodes</span>
+          <div class="video-playlist-nav">
+            <button class="vp-nav-btn" id="vp-prev" onclick="vpNav(-1)" aria-label="Previous">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
+            </button>
+            <button class="vp-nav-btn" id="vp-next" onclick="vpNav(1)" aria-label="Next">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="video-playlist-list" id="vp-list"></div>
+      </div>
+
+    </div>
+  </div>
+</section>
 
 <!-- ── HOW IT WORKS ─────────────────────────────────────────── -->
 <section class="section how-section" id="how-it-works">
@@ -174,15 +242,15 @@
           <span class="step-v-tag">Ollama · model reference · pull from UI</span>
         </div>
         <div class="step-v-visual">
-          <div class="step-v-frame">
+          <div class="step-v-frame" onclick="openLightbox(0)" title="Click to zoom">
             <div class="step-v-bar">
               <span class="install-dot dot-red"></span>
               <span class="install-dot dot-amber"></span>
               <span class="install-dot dot-green"></span>
             </div>
-            <img src="assets/step-01.png" alt="Setup step"
+            <img src="shared/assets/steps/step-01.png" alt="Setup step"
                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-            <div class="step-v-ph">assets/step-01.png</div>
+            <div class="step-v-ph" style="display:none">shared/assets/steps/step-01.png</div>
           </div>
         </div>
       </div>
@@ -199,15 +267,15 @@
           <span class="step-v-tag">Multiple projects · per-project description</span>
         </div>
         <div class="step-v-visual">
-          <div class="step-v-frame">
+          <div class="step-v-frame" onclick="openLightbox(1)" title="Click to zoom">
             <div class="step-v-bar">
               <span class="install-dot dot-red"></span>
               <span class="install-dot dot-amber"></span>
               <span class="install-dot dot-green"></span>
             </div>
-            <img src="assets/step-02.png" alt="Projects step"
+            <img src="shared/assets/steps/step-02.png" alt="Projects step"
                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-            <div class="step-v-ph">assets/step-02.png</div>
+            <div class="step-v-ph" style="display:none">shared/assets/steps/step-02.png</div>
           </div>
         </div>
       </div>
@@ -225,15 +293,15 @@
           <span class="step-v-tag">Smart defaults · user overrides always win</span>
         </div>
         <div class="step-v-visual">
-          <div class="step-v-frame">
+          <div class="step-v-frame" onclick="openLightbox(2)" title="Click to zoom">
             <div class="step-v-bar">
               <span class="install-dot dot-red"></span>
               <span class="install-dot dot-amber"></span>
               <span class="install-dot dot-green"></span>
             </div>
-            <img src="assets/step-03.png" alt="File selection step"
+            <img src="shared/assets/steps/step-03.png" alt="File selection step"
                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-            <div class="step-v-ph">assets/step-03.png</div>
+            <div class="step-v-ph" style="display:none">shared/assets/steps/step-03.png</div>
           </div>
         </div>
       </div>
@@ -250,15 +318,15 @@
           <span class="step-v-tag">Smart Update · file tree · precision modes</span>
         </div>
         <div class="step-v-visual">
-          <div class="step-v-frame">
+          <div class="step-v-frame" onclick="openLightbox(3)" title="Click to zoom">
             <div class="step-v-bar">
               <span class="install-dot dot-red"></span>
               <span class="install-dot dot-amber"></span>
               <span class="install-dot dot-green"></span>
             </div>
-            <img src="assets/step-04.png" alt="Options step"
+            <img src="shared/assets/steps/step-04.png" alt="Options step"
                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-            <div class="step-v-ph">assets/step-04.png</div>
+            <div class="step-v-ph" style="display:none">shared/assets/steps/step-04.png</div>
           </div>
         </div>
       </div>
@@ -277,15 +345,15 @@
           <span class="step-v-tag">Live preview · retry · edit from UI · cache-safe</span>
         </div>
         <div class="step-v-visual">
-          <div class="step-v-frame">
+          <div class="step-v-frame" onclick="openLightbox(4)" title="Click to zoom">
             <div class="step-v-bar">
               <span class="install-dot dot-red"></span>
               <span class="install-dot dot-amber"></span>
               <span class="install-dot dot-green"></span>
             </div>
-            <img src="assets/step-05.png" alt="Run step"
+            <img src="shared/assets/steps/step-05.png" alt="Run step"
                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-            <div class="step-v-ph">assets/step-05.png</div>
+            <div class="step-v-ph" style="display:none">shared/assets/steps/step-05.png</div>
           </div>
         </div>
       </div>
@@ -761,6 +829,24 @@
   </div>
 </footer>
 
+<!-- ── IMAGE LIGHTBOX ─────────────────────────────────────── -->
+<div id="img-lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+  <button class="lightbox-close" onclick="closeLightbox()" aria-label="Close">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  </button>
+  <button class="lightbox-nav lightbox-prev" onclick="lbNav(-1)" aria-label="Previous">&#8249;</button>
+  <div class="lightbox-img-wrap" id="lb-wrap">
+    <img id="lb-img" src="" alt="">
+  </div>
+  <button class="lightbox-nav lightbox-next" onclick="lbNav(1)" aria-label="Next">&#8250;</button>
+  <div class="lightbox-zoom-hint" id="lb-hint">Scroll or pinch to zoom · drag to pan</div>
+  <div class="lightbox-footer">
+    <div class="lightbox-dots" id="lb-dots"></div>
+  </div>
+</div>
+
 <!-- ── SCRIPTS ───────────────────────────────────────────────── -->
 <script src="shared/dna.js"></script>
 <script>
@@ -836,6 +922,319 @@
   makeDna('dna-nav', ACCENT);
   makeDna('dna-footer', ACCENT);
   typewriter('brand-nav');
+
+})();
+
+// ── VIDEO SERIES ──────────────────────────────────────────────
+(function () {
+  'use strict';
+
+  // ┌──────────────────────────────────────────────────────────┐
+  // │  ADD YOUR VIDEOS HERE                                    │
+  // │  id       → YouTube video ID (from the URL after ?v=)   │
+  // │  title    → shown under the player and in the playlist   │
+  // │  desc     → short description shown under the player     │
+  // │  duration → optional label shown on the thumbnail card   │
+  // └──────────────────────────────────────────────────────────┘
+  const VIDEO_SERIES = [
+    {
+      id:       '',
+      title:    'Getting Started with repoDNA',
+      desc:     'Install in under a minute, connect Ollama, and generate your first context file from scratch.',
+      duration: '3:42',
+    },
+  ];
+
+  let vpIdx     = 0;
+  let vpPlaying = false;
+
+  const thumbOverlay = document.getElementById('vp-thumb-overlay');
+  const iframe       = document.getElementById('vp-iframe');
+  const thumbImg     = document.getElementById('vp-thumb-img');
+  const titleEl      = document.getElementById('vp-title');
+  const descEl       = document.getElementById('vp-desc');
+  const epEl         = document.getElementById('vp-ep-label');
+  const listEl       = document.getElementById('vp-list');
+  const prevBtn      = document.getElementById('vp-prev');
+  const nextBtn      = document.getElementById('vp-next');
+  const errorOverlay = document.getElementById('vp-error');
+  const errorLink    = document.getElementById('vp-error-link');
+
+  function thumbUrl(id) {
+    return `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
+  }
+
+  function buildPlaylist() {
+    listEl.innerHTML = '';
+    VIDEO_SERIES.forEach((v, i) => {
+      const card = document.createElement('button');
+      card.className = 'vp-card' + (i === 0 ? ' active' : '');
+      card.setAttribute('aria-label', 'Play episode ' + (i + 1));
+      card.innerHTML = `
+        <div class="vp-card-thumb">
+          <img src="${thumbUrl(v.id)}" alt="" loading="lazy"
+               onerror="this.style.background='var(--s3)';this.style.opacity=0">
+          ${v.duration ? `<span class="vp-card-dur">${v.duration}</span>` : ''}
+          <div class="vp-card-play-icon">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+          </div>
+        </div>
+        <div class="vp-card-body">
+          <div class="vp-card-ep">Episode ${i + 1}</div>
+          <div class="vp-card-title">${v.title}</div>
+          <p class="vp-card-desc">${v.desc}</p>
+        </div>`;
+      card.onclick = () => vpGoTo(i, true);
+      listEl.appendChild(card);
+    });
+  }
+
+  function vpGoTo(i, autoplay) {
+    vpIdx    = (i + VIDEO_SERIES.length) % VIDEO_SERIES.length;
+    vpPlaying = false;
+    const v  = VIDEO_SERIES[vpIdx];
+
+    // Update player
+    thumbImg.src              = thumbUrl(v.id);
+    thumbOverlay.style.display = '';
+    iframe.src                 = '';
+    errorOverlay.classList.remove('visible');
+    titleEl.textContent        = v.title;
+    descEl.textContent         = v.desc;
+    epEl.textContent           = `Episode ${vpIdx + 1} of ${VIDEO_SERIES.length}`;
+
+    // Update playlist
+    listEl.querySelectorAll('.vp-card').forEach((c, ci) => {
+      c.classList.toggle('active', ci === vpIdx);
+    });
+
+    // Scroll active card into view
+    const activeCard = listEl.children[vpIdx];
+    if (activeCard) activeCard.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+    // Update nav buttons
+    prevBtn.disabled = vpIdx === 0;
+    nextBtn.disabled = vpIdx === VIDEO_SERIES.length - 1;
+
+    if (autoplay) vpPlay();
+  }
+
+  window.vpPlay = function () {
+    if (vpPlaying) return;
+    vpPlaying = true;
+    const v = VIDEO_SERIES[vpIdx];
+    const originParam = location.protocol !== 'file:' ? `&origin=${encodeURIComponent(location.origin)}` : '';
+    iframe.src = `https://www.youtube.com/embed/${v.id}?autoplay=1&rel=0&enablejsapi=1${originParam}`;
+    thumbOverlay.style.display = 'none';
+  };
+
+  window.vpNav = function (dir) {
+    vpGoTo(vpIdx + dir, false);
+  };
+
+  // Catch YouTube embed errors (e.g. Error 153 = embedding disabled)
+  window.addEventListener('message', function (e) {
+    if (!String(e.origin).includes('youtube')) return;
+    try {
+      const d = JSON.parse(e.data);
+      if (d.event === 'onError') {
+        errorLink.href = `https://www.youtube.com/watch?v=${VIDEO_SERIES[vpIdx].id}`;
+        errorOverlay.classList.add('visible');
+      }
+    } catch (_) {}
+  });
+
+  // Init
+  buildPlaylist();
+  vpGoTo(0, false);
+
+})();
+
+// ── LIGHTBOX ──────────────────────────────────────────────────
+(function () {
+  'use strict';
+
+  const LB_SRCS = [
+    'shared/assets/steps/step-01.png',
+    'shared/assets/steps/step-02.png',
+    'shared/assets/steps/step-03.png',
+    'shared/assets/steps/step-04.png',
+    'shared/assets/steps/step-05.png',
+  ];
+
+  let lbIdx   = 0;
+  let lbScale = 1;
+  let lbPanX  = 0;
+  let lbPanY  = 0;
+  let dragging = false;
+  let dragStartX = 0, dragStartY = 0;
+  let panStartX  = 0, panStartY  = 0;
+  let lastPinchDist = 0;
+  let hintTimer = null;
+  let rafId = null;
+
+  const lb    = document.getElementById('img-lightbox');
+  const wrap  = document.getElementById('lb-wrap');
+  const img   = document.getElementById('lb-img');
+  const dots  = document.getElementById('lb-dots');
+  const hint  = document.getElementById('lb-hint');
+
+  // Build dots
+  LB_SRCS.forEach((_, i) => {
+    const d = document.createElement('button');
+    d.className = 'lightbox-dot' + (i === 0 ? ' active' : '');
+    d.setAttribute('aria-label', 'Step ' + (i + 1));
+    d.onclick = () => lbGoTo(i);
+    dots.appendChild(d);
+  });
+
+  function applyTransform() {
+    img.style.transform = `scale(${lbScale}) translate(${lbPanX / lbScale}px, ${lbPanY / lbScale}px)`;
+  }
+
+  function scheduleTransform() {
+    if (rafId) return;
+    rafId = requestAnimationFrame(() => { rafId = null; applyTransform(); });
+  }
+
+  function resetTransform() {
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    lbScale = 1; lbPanX = 0; lbPanY = 0;
+    img.style.transition = 'transform .22s ease';
+    applyTransform();
+    setTimeout(() => { img.style.transition = ''; }, 230);
+  }
+
+  function updateDots() {
+    dots.querySelectorAll('.lightbox-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === lbIdx);
+    });
+  }
+
+  function lbGoTo(i) {
+    lbIdx = (i + LB_SRCS.length) % LB_SRCS.length;
+    img.src = LB_SRCS[lbIdx];
+    resetTransform();
+    updateDots();
+  }
+
+  window.openLightbox = function (idx) {
+    lbGoTo(idx);
+    lb.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    // Show hint then fade it out
+    hint.classList.remove('fade');
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => hint.classList.add('fade'), 2200);
+  };
+
+  window.closeLightbox = function () {
+    lb.classList.remove('open');
+    document.body.style.overflow = '';
+    resetTransform();
+  };
+
+  window.lbNav = function (dir) { lbGoTo(lbIdx + dir); };
+
+  // Close on backdrop click
+  lb.addEventListener('click', e => {
+    if (e.target === lb) closeLightbox();
+  });
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'Escape')      closeLightbox();
+    if (e.key === 'ArrowRight')  lbGoTo(lbIdx + 1);
+    if (e.key === 'ArrowLeft')   lbGoTo(lbIdx - 1);
+    if (e.key === '+')           lbZoom(0.3);
+    if (e.key === '-')           lbZoom(-0.3);
+  });
+
+  // Scroll to zoom
+  wrap.addEventListener('wheel', e => {
+    e.preventDefault();
+    lbZoom(e.deltaY < 0 ? 0.2 : -0.2);
+  }, { passive: false });
+
+  function lbZoom(delta) {
+    lbScale = Math.min(5, Math.max(1, lbScale + delta));
+    if (lbScale === 1) { lbPanX = 0; lbPanY = 0; }
+    applyTransform();
+    wrap.style.cursor = lbScale > 1 ? 'grab' : 'grab';
+  }
+
+  // Double-click to reset zoom
+  wrap.addEventListener('dblclick', () => resetTransform());
+
+  // Mouse drag for pan
+  wrap.addEventListener('mousedown', e => {
+    if (lbScale <= 1) return;
+    dragging = true;
+    dragStartX = e.clientX; dragStartY = e.clientY;
+    panStartX  = lbPanX;   panStartY  = lbPanY;
+    wrap.classList.add('grabbing');
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    lbPanX = panStartX + (e.clientX - dragStartX);
+    lbPanY = panStartY + (e.clientY - dragStartY);
+    scheduleTransform();
+  });
+
+  window.addEventListener('mouseup', () => {
+    dragging = false;
+    wrap.classList.remove('grabbing');
+  });
+
+  // Touch: pinch-to-zoom + swipe
+  let touchStartX = 0;
+  wrap.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      lastPinchDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+    } else if (e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      if (lbScale > 1) {
+        dragging = true;
+        dragStartX = e.touches[0].clientX;
+        dragStartY = e.touches[0].clientY;
+        panStartX  = lbPanX; panStartY = lbPanY;
+      }
+    }
+  }, { passive: true });
+
+  wrap.addEventListener('touchmove', e => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const ratio = dist / lastPinchDist;
+      lbScale = Math.min(5, Math.max(1, lbScale * ratio));
+      if (lbScale === 1) { lbPanX = 0; lbPanY = 0; }
+      lastPinchDist = dist;
+      scheduleTransform();
+    } else if (e.touches.length === 1 && dragging && lbScale > 1) {
+      lbPanX = panStartX + (e.touches[0].clientX - dragStartX);
+      lbPanY = panStartY + (e.touches[0].clientY - dragStartY);
+      scheduleTransform();
+    }
+  }, { passive: false });
+
+  wrap.addEventListener('touchend', e => {
+    dragging = false;
+    // Swipe navigation when not zoomed
+    if (lbScale <= 1 && e.changedTouches.length === 1) {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      if (Math.abs(dx) > 50) lbGoTo(lbIdx + (dx < 0 ? 1 : -1));
+    }
+  }, { passive: true });
 
 })();
 </script>
