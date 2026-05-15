@@ -1203,6 +1203,7 @@ select.input { cursor: pointer; }
 .frun-change-modified { color: #facc15; }
 .frun-change-readded  { color: #60a5fa; }
 .frun-change-removed  { color: var(--err); }
+.frun-change-retried  { color: #c084fc; }
 .frun-error-line { font-size: 10px; color: var(--err); opacity: .85; padding-left: 21px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .frun-retry { margin-left: auto; flex-shrink: 0; background: none; border: 1px solid var(--b2); border-radius: var(--r-sm); color: var(--t3); font-size: 10px; padding: 2px 8px; cursor: pointer; transition: all .12s; font-family: var(--mono); }
 .frun-retry:hover { border-color: var(--a); color: var(--a); background: var(--inc-dim); }

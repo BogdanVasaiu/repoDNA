@@ -457,6 +457,17 @@ async function runAnalysis(config) {
     status: "running",
     elapsed: 0,
   });
+
+  // Push an early preview before AI processing starts so the preview panel
+  // immediately shows the project overview + file tree (if enabled) + any
+  // cached results (smart update). On first run this gives the tree; on
+  // subsequent smart-update runs it gives all previously-analyzed files.
+  if (processableFiles.length > 0) {
+    var _earlyMd = buildClaudeMd(appState.results, config, [], "", treeFiles);
+    appState.previewContent = _earlyMd;
+    push("preview", { content: _earlyMd, final: false });
+  }
+
   log(
     "scan",
     "Found " +
@@ -742,6 +753,7 @@ async function drainRetryQueue() {
   retryRunning = true;
   retryLock = true;
   while (retryQueue.length > 0) {
+    if (runnerAbortController && runnerAbortController.signal.aborted) break;
     var _item = retryQueue.shift();
     await _executeRetry(_item.fileId, _item.precision);
     if (retryQueue.length > 0)
@@ -777,6 +789,11 @@ async function _executeRetry(fileId, precisionOverride) {
     return;
   }
 
+  // If this file wasn't part of the current run at all, add it so totals stay accurate
+  if (!appState.runFileList.includes(fileId)) {
+    appState.runFileList.push(fileId);
+    appState.total++;
+  }
   // If this file hasn't been counted yet (it was pending), count it now
   var isNewCompletion = !completedFiles.has(fileId);
   appState.fileStatuses[fileId] = { status: "running" };
@@ -785,11 +802,12 @@ async function _executeRetry(fileId, precisionOverride) {
   log("info", "Retrying: " + retryLabel);
 
   try {
+    var retrySignal = runnerAbortController ? runnerAbortController.signal : new AbortController().signal;
     var result = await analyzeFileWithOllama(
       filePath,
       config.projectPath,
       effectiveConfig,
-      new AbortController().signal,
+      retrySignal,
     );
 
     if (result.content) {
@@ -852,6 +870,7 @@ async function _executeRetry(fileId, precisionOverride) {
       return { ok: false, error: reason };
     }
   } catch (e) {
+    if (retrySignal && retrySignal.aborted) return; // user navigated away — drop silently
     appState.fileStatuses[fileId] = { status: "error", error: e.message };
     push("file_status", { file: fileId, status: "error", error: e.message }); // Count it even on exception so the main loop skips it
 
@@ -1329,6 +1348,9 @@ export function startServer() {
         appState.sessionStartedAt = null;
         catResultMaps = {};
         completedFiles = new Set();
+        retryQueue = [];
+        retryRunning = false;
+        retryLock = false;
         push("phase", { phase: "wizard" });
         push("ui_page", { page: 0 });
         jsonOut({ ok: true });

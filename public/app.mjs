@@ -60,6 +60,7 @@ var S = {
   fileStatuses: {}, // file id -> { status: 'pending'|'running'|'ok'|'error', error? }
   currentRunLogStart: 0, // log index where current run starts
   retryingFiles: new Set(),
+  retriedFileIds: new Set(),
   runDone: 0,
   runTotal: 0,
   deletedCount: 0,
@@ -439,6 +440,7 @@ function connectSSE() {
     var d = JSON.parse(e.data);
     S.fileList = d.files || [];
     S.fileChangeTypes = d.changeTypes || {};
+    S.retriedFileIds = new Set();
     var deletedSet = new Set(d.deletedSet || []);
     for (var i = 0; i < S.fileList.length; i++) {
       var fid = S.fileList[i];
@@ -456,6 +458,9 @@ function connectSSE() {
   es.addEventListener("file_status", function (e) {
     var d = JSON.parse(e.data);
     S.fileStatuses[d.file] = { status: d.status, error: d.error || null };
+    if (d.status === "ok" && S.retriedFileIds.has(d.file) && !S.fileChangeTypes[d.file]) {
+      S.fileChangeTypes[d.file] = "retried";
+    }
     updateFileRow(d.file);
   });
 
@@ -727,6 +732,7 @@ function createFileRow(fid) {
     modified: '<span class="frun-change frun-change-modified" title="Modified">~</span>',
     readded:  '<span class="frun-change frun-change-readded"  title="Re-added">↩</span>',
     removed:  '<span class="frun-change frun-change-removed"  title="Removed">−</span>',
+    retried:  '<span class="frun-change frun-change-retried"  title="Retried">↺</span>',
   };
   var changeBadge = changeBadgeMap[changeType] || "";
 
@@ -766,7 +772,11 @@ function updateFileRow(fid) {
     container.replaceChild(newRow, existing);
   } else {
     // New file (e.g. from retry of a file not in original list)
-    if (!S.fileList.includes(fid)) S.fileList.push(fid);
+    if (!S.fileList.includes(fid)) {
+      S.fileList.push(fid);
+      var _badge = document.getElementById("file-run-count");
+      if (_badge) _badge.textContent = S.fileList.length;
+    }
     container.appendChild(newRow);
   }
   // Scroll running file into view only when user is already at the bottom (chat-like behavior)
@@ -791,7 +801,10 @@ function _refreshResultCard(fid) {
 
 window._retryFile = async function (fid, precision) {
   if (S.retryingFiles.has(fid)) return;
+  var _card = document.querySelector('.result-card[data-file="' + CSS.escape(fid) + '"]');
+  if (_card && _card.dataset.editing === 'true') return;
   S.retryingFiles.add(fid);
+  S.retriedFileIds.add(fid);
   S.fileStatuses[fid] = { status: "running" };
   updateFileRow(fid);
   _refreshResultCard(fid); // exits edit mode and disables Edit button while retrying
@@ -3231,6 +3244,12 @@ window._editResultCard = function(btn) {
   btn.style.display = 'none';
   var copyBtn = card.querySelector('.result-copy-btn');
   if (copyBtn) copyBtn.style.display = 'none';
+  var retryCtrl = card.querySelector('.retry-ctrl');
+  if (retryCtrl) {
+    retryCtrl.querySelectorAll('button, select').forEach(function(el) { el.disabled = true; });
+    retryCtrl.style.opacity = '0.35';
+    retryCtrl.style.pointerEvents = 'none';
+  }
 };
 
 window._cancelResultEdit = function(btn) {
@@ -3243,6 +3262,12 @@ window._cancelResultEdit = function(btn) {
   if (editBtn) editBtn.style.display = '';
   var copyBtn = card.querySelector('.result-copy-btn');
   if (copyBtn) copyBtn.style.display = '';
+  var retryCtrl = card.querySelector('.retry-ctrl');
+  if (retryCtrl) {
+    retryCtrl.querySelectorAll('button, select').forEach(function(el) { el.disabled = false; });
+    retryCtrl.style.opacity = '';
+    retryCtrl.style.pointerEvents = '';
+  }
 };
 
 window._applyResultEdit = async function(btn) {
