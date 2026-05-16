@@ -660,6 +660,15 @@ select.input { cursor: pointer; }
   border-radius: 3px; transition: all .1s;
 }
 .tree-toggle:hover { color: var(--t1); background: var(--b2); }
+.tree-toggle-file { cursor: default; position: relative; }
+.tree-toggle-file:hover { color: inherit; background: none; }
+.tree-toggle-file::before {
+  content: '';
+  position: absolute;
+  left: -2px; right: -2px;
+  top: 50%; height: 1px;
+  background: var(--b3);
+}
 
 /* Checkbox — clean bordered square */
 .tree-checkbox {
@@ -709,12 +718,13 @@ select.input { cursor: pointer; }
 .tree-badge.tree-badge-new { color: #7dd3fc; border-color: rgba(125,211,252,.35); background: rgba(125,211,252,.08); font-weight: 600; }
 
 /* Directory inline action buttons — appear on hover */
-.dir-inline-btns {
+.dir-inline-btns, .file-inline-btns {
   display: none; gap: 3px; align-items: center;
   position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
   background: var(--s4);
 }
-.tree-row:hover .dir-inline-btns { display: flex; }
+.tree-row:hover .dir-inline-btns,
+.tree-row:hover .file-inline-btns { display: flex; }
 .dir-btn {
   font-size: 9px; padding: 2px 8px; border-radius: 99px;
   border: 1px solid var(--b3); cursor: pointer; font-family: var(--mono);
@@ -724,6 +734,15 @@ select.input { cursor: pointer; }
 .dir-btn:hover { color: var(--t1); border-color: var(--b3); }
 .dir-btn-inc:hover { color: var(--a); border-color: rgba(32,227,160,.4); background: var(--inc-dim); }
 .dir-btn-exc:hover { color: var(--err); border-color: rgba(248,113,113,.3); }
+
+.tree-global-btn {
+  background: none; border: 1px solid var(--b2); color: var(--t3);
+  border-radius: 99px; padding: 2px 8px; font-size: 9px; cursor: pointer;
+  font-family: var(--mono); font-weight: 600; line-height: 1.8;
+  transition: all .12s; white-space: nowrap;
+}
+.tree-global-btn-inc:hover { color: var(--a); border-color: rgba(32,227,160,.4); background: var(--inc-dim); }
+.tree-global-btn-exc:hover { color: var(--err); border-color: rgba(248,113,113,.3); }
 
 .tree-children { padding-left: 0; }
 .tree-children.collapsed { display: none; }

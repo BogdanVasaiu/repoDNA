@@ -2079,7 +2079,7 @@ function createTreeNode(node, depth, isLast, lineage) {
     var newBadge = node.isNew ? '<span class="tree-badge tree-badge-new">new</span>' : "";
     row2.innerHTML =
       indentHTML +
-      '<span class="tree-toggle"></span><span class="tree-checkbox ' +
+      '<span class="tree-toggle tree-toggle-file"></span><span class="tree-checkbox ' +
       cbClass2 +
       '">' +
       cbIcon2 +
@@ -2140,6 +2140,19 @@ function renderSummary() {
   setEl("p2-size", formatSize(totalSize));
   setEl("p2-tokens", tokStr);
 }
+
+window._includeAllFiles = function () {
+  S.flatNodes.forEach(function (n) {
+    if (n.type === "file") S.userOverrides.set(n.id, "included");
+  });
+  renderTree(); renderCategoryChips(); refreshFileCount(); renderSummary(); saveCurrentProjectSettings();
+};
+window._excludeAllFiles = function () {
+  S.flatNodes.forEach(function (n) {
+    if (n.type === "file") S.userOverrides.set(n.id, "excluded");
+  });
+  renderTree(); renderCategoryChips(); refreshFileCount(); renderSummary(); saveCurrentProjectSettings();
+};
 
 function renderCategoryChips() {
   var container = document.getElementById("category-list");
