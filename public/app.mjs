@@ -71,6 +71,43 @@ var S = {
 
 var _ollamaCatalog = null;   // curated models list from ollama_models.json
 var _catalogFilter = "local"; // "local" | "cloud"
+var _MODEL_STATS_KEY = "repodna_model_stats";
+var _SPEED_WINDOW = 5; // rolling average over last N runs
+var _sizeFetchScheduled = false;
+
+function _getModelStats() {
+  try { return JSON.parse(localStorage.getItem(_MODEL_STATS_KEY) || "{}"); } catch(e) { return {}; }
+}
+function _saveModelStat(modelName, avgSecPerFile) {
+  if (!modelName || !(avgSecPerFile > 0)) return;
+  try {
+    var stats = _getModelStats();
+    var s = stats[modelName] || { samples: [] };
+    if (!Array.isArray(s.samples)) s.samples = s.avg > 0 ? [s.avg] : []; // migrate old EMA format
+    s.samples.push(avgSecPerFile);
+    if (s.samples.length > _SPEED_WINDOW) s.samples.splice(0, s.samples.length - _SPEED_WINDOW);
+    s.avg = s.samples.reduce(function(a, b) { return a + b; }, 0) / s.samples.length;
+    stats[modelName] = s;
+    localStorage.setItem(_MODEL_STATS_KEY, JSON.stringify(stats));
+  } catch(e) {}
+}
+function _fmtModelSize(bytes) {
+  if (!bytes || bytes <= 0) return '—';
+  var gb = bytes / 1e9;
+  if (gb >= 1) return gb.toFixed(1).replace(/\.0$/, '') + ' GB';
+  return Math.round(bytes / 1e6) + ' MB';
+}
+
+function _lookupCatalogEntry(modelName) {
+  if (!_ollamaCatalog || !_ollamaCatalog.models) return null;
+  var bare = modelName.replace(/:latest$/, '');
+  for (var i = 0; i < _ollamaCatalog.models.length; i++) {
+    var m = _ollamaCatalog.models[i];
+    var om = (m.ollama_model || '').replace(/:latest$/, '');
+    if (om === bare || om === modelName || m.ollama_model === modelName) return m;
+  }
+  return null;
+}
 
 var _projectsList = [];
 
@@ -1307,20 +1344,69 @@ function renderUserModelsSection() {
     el.innerHTML = '<div style="color:var(--t4);font-size:12px;padding:4px 0">No models detected — make sure Ollama is running and click Re-check on step 01.</div>';
     return;
   }
-  var html = '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+  var stats = _getModelStats();
+  var localSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>';
+  var cloudSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>';
+  var html =
+    '<div class="imodels-header">' +
+      '<span class="imodel-hdr-name">Model</span>' +
+      '<span class="imodel-hdr-size">Size</span>' +
+      '<span class="imodel-hdr-speed">Avg</span>' +
+    '</div>' +
+    '<div class="imodels-list">';
   for (var i = 0; i < S.ollamaModels.length; i++) {
     var m = S.ollamaModels[i];
-    var iconSvg = m.isCloud
-      ? '<svg class="model-chip-icon" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>'
-      : '<svg class="model-chip-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>';
-    html += '<span class="model-chip" onclick="window._setCatalogModelSelect(\'' + escHtml(m.name) + '\')" title="Click to select this model">' +
-      iconSvg +
-      '<span class="model-chip-name">' + escHtml(m.name) + '</span>' +
-      '</span>';
+    var sizeLabel = m.isCloud ? 'cloud' : _fmtModelSize(m.size);
+    var stat = stats[m.name];
+    var speed = stat && stat.avg > 0 ? '~' + stat.avg.toFixed(1) + 's' : '—';
+    html +=
+      '<div class="imodel-row" onclick="window._setCatalogModelSelect(\'' + escHtml(m.name) + '\')" title="Click to select">' +
+        '<span class="imodel-type-icon ' + (m.isCloud ? 'imodel-cloud' : 'imodel-local') + '">' + (m.isCloud ? cloudSvg : localSvg) + '</span>' +
+        '<span class="imodel-name">' + escHtml(m.name) + '</span>' +
+        '<span class="imodel-vram">' + sizeLabel + '</span>' +
+        '<span class="imodel-speed" title="Avg time per file from your runs">' + speed + '</span>' +
+      '</div>';
   }
   html += '</div>';
+  html += '<button class="btn-inline imodel-add-btn" onclick="window._showModelCatalog()">+ Add new model</button>';
   el.innerHTML = html;
+
+  // If any local model is missing size (server not yet restarted, or Ollama gap),
+  // fetch fresh model data once in the background and re-render.
+  var needsSize = S.ollamaModels.some(function(m) { return !m.isCloud && !m.size; });
+  if (needsSize && !_sizeFetchScheduled) {
+    _sizeFetchScheduled = true;
+    setTimeout(window._refreshModelSizes, 400);
+  }
 }
+
+window._refreshModelSizes = async function() {
+  try {
+    var host = S.ollamaHost || 'http://localhost:11434';
+    var r = await fetch('/api/check-ollama?host=' + encodeURIComponent(host));
+    var d = await r.json();
+    if (d.ok && d.models) {
+      S.ollamaModels = d.models.map(function(m) {
+        if (typeof m === 'string') return { name: m, isCloud: false, size: 0 };
+        return { name: m.name, isCloud: !!m.isCloud, size: m.size || 0 };
+      });
+      renderUserModelsSection();
+    }
+  } catch(e) {}
+};
+
+window._showModelCatalog = function() {
+  var card = document.getElementById("models-reference-card");
+  if (!card) return;
+  card.style.display = '';
+  if (!_ollamaCatalog) loadOllamaModelsCatalog();
+  setTimeout(function() { card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+};
+
+window._hideModelCatalog = function() {
+  var card = document.getElementById("models-reference-card");
+  if (card) card.style.display = 'none';
+};
 
 window._setCatalogFilter = function(filter, btn) {
   _catalogFilter = filter;
@@ -3056,6 +3142,10 @@ function onDone() {
   }
   document.getElementById("current-file").textContent = sub;
   updateRunControls();
+  if (S.model && S.runTotal > 0 && _elapsedBase > 0) {
+    _saveModelStat(S.model, _elapsedBase / S.runTotal);
+    renderUserModelsSection();
+  }
 }
 // ═══════════════════════════════════════════════════════════
 // RESULTS TABS
@@ -3335,6 +3425,8 @@ function renderPreview() {
   var prevScrollTop = panel.scrollTop;
   var prevScrollHeight = panel.scrollHeight;
   var wasAtBottom = prevScrollHeight - prevScrollTop - panel.clientHeight <= 60;
+  // User is reading — don't disturb them with live re-renders
+  if (!wasAtBottom && !S.previewFinal) return;
   var badge = S.previewFinal
     ? '<span class="preview-final-badge">final</span>'
     : '<span class="preview-live-badge">● live</span>';

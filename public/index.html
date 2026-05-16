@@ -151,22 +151,24 @@
         <!-- YOUR INSTALLED MODELS -->
         <div class="card">
           <div class="card-title">Your Installed Models</div>
-          <div class="hint" style="margin-bottom:10px">Models available in your Ollama instance. Use the Re-check button to refresh.</div>
           <div id="user-models-section">
             <div style="color:var(--t4);font-size:12px">No models detected — make sure Ollama is running or pull your first model from the table below.</div>
           </div>
         </div>
 
-        <!-- MODELS REFERENCE TABLE -->
-        <div class="card" style="margin-top:16px">
+        <!-- SUGGESTED MODELS TABLE -->
+        <div class="card" id="models-reference-card" style="margin-top:16px;display:none">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:20px">
             <div>
-              <div class="card-title" style="margin-bottom:2px">Model Reference</div>
+              <div class="card-title" style="margin-bottom:2px">Suggested Models</div>
               <div class="hint">A curated list of models recommended for code analysis — compare specs and pick the best fit for your project.</div>
             </div>
-            <button class="btn-inline" id="btn-refresh-catalog"
-              onclick="window._refreshModelsCatalog()"
-              style="font-size:11px;padding:5px 10px">↻ Check for updates</button>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="btn-inline" id="btn-refresh-catalog"
+                onclick="window._refreshModelsCatalog()"
+                style="font-size:11px;padding:5px 10px">↻ Check for updates</button>
+              <button class="btn-close-catalog" onclick="window._hideModelCatalog()" title="Close">×</button>
+            </div>
           </div>
           <div id="catalog-refresh-msg" style="display:none;font-size:11px;color:var(--t3);margin-bottom:8px"></div>
           <div class="mcat-tabs">

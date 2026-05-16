@@ -1284,6 +1284,9 @@ export function startServer() {
 
       if (url.pathname === "/api/abort" && req.method === "POST") {
         if (runnerAbortController) runnerAbortController.abort();
+        // Replace with a fresh controller so retries work after stop.
+        // /api/reset (New Analysis) aborts whatever controller is current.
+        runnerAbortController = new AbortController();
         resumeAll();
         // Clear the running animation on any in-flight file
         for (var _sf in appState.fileStatuses) {

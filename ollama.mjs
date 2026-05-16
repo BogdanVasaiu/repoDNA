@@ -69,7 +69,7 @@ export async function checkOllama(host) {
       var d = await r.json();
       var models = (d.models || []).map(function (m) {
         var isCloud = /[:\-]cloud\b/i.test(m.name) || m.size === 0;
-        return { name: m.name, isCloud: isCloud };
+        return { name: m.name, isCloud: isCloud, size: m.size || 0 };
       });
       return { ok: true, models: models };
     }
