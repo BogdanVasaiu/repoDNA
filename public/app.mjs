@@ -1553,8 +1553,7 @@ async function loadProjectList() {
     var d = await r.json();
     _projectsList = d.projects || [];
     if (!_projectsList.length) {
-      list.innerHTML =
-        '<div style="color:var(--muted);font-size:12px;padding:4px 0">No saved projects yet.</div>';
+      list.innerHTML = '<div class="bb-empty"><div class="bb-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="color:var(--t3)"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div><div class="bb-empty-title">No projects yet</div><div class="bb-empty-sub">Paste a folder path above and click + Add</div></div>';
       setDescCardEnabled(false);
       return;
     }
@@ -1685,7 +1684,11 @@ document.getElementById("project-desc").addEventListener("input", function () {
 var pickerPath = null;
 window._addProject = async function () {
   var path = document.getElementById("project-path").value.trim();
-  if (!path) return;
+  if (!path) {
+    showSnack('Paste the full path to your project folder — there\'s no OS folder picker. Copy the path from File Explorer, Finder, or your terminal.', 'info', 7000);
+    document.getElementById("project-path").focus();
+    return;
+  }
   var hint = document.getElementById("path-hint");
   hint.textContent = "";
   hint.className = "hint";
@@ -3067,6 +3070,21 @@ window._exitToStart = async function () {
   // Re-run system checks so step 01 is fresh
   runChecks();
 };
+
+function showSnack(msg, type, duration) {
+  var container = document.getElementById('snackbar-container');
+  if (!container) return;
+  var sb = document.createElement('div');
+  sb.className = 'snackbar ' + (type === 'info' ? 'snackbar-info' : 'snackbar-warn');
+  var icon = type === 'info'
+    ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+    : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+  sb.innerHTML = icon + '<span></span><button class="snackbar-close" title="Dismiss">✕</button>';
+  sb.querySelector('span').textContent = msg;
+  sb.querySelector('.snackbar-close').onclick = function() { sb.remove(); };
+  container.appendChild(sb);
+  if (duration !== 0) setTimeout(function() { if (sb.parentNode) sb.remove(); }, duration || 5000);
+}
 
 var _snackbarApiErrorTimer = null;
 function _showApiErrorSnackbar(isAuth) {

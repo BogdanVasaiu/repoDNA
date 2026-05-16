@@ -192,14 +192,17 @@
 
       <!-- PAGE 1: PROJECT SETUP -->
       <div class="wizard-page" id="page-1">
-        <div class="card" id="projects-card">
-          <div class="card-title">Your Projects</div>
-          <div class="input-row" style="margin-bottom:8px">
-            <input class="input" id="project-path" placeholder="/absolute/path/to/project" style="flex:1" spellcheck="false">
+        <div class="page-header">
+          <div class="page-title">Your <span>Projects</span></div>
+          <div class="page-subtitle">Register one or more local folders — each is analyzed independently.</div>
+        </div>
+        <div class="bb-card" id="projects-card">
+          <div class="bb-add-row">
+            <input class="input" id="project-path" placeholder="Paste the full path to your project folder" style="flex:1" spellcheck="false">
             <button class="btn-inline" onclick="window._addProject()">+ Add</button>
           </div>
-          <div class="hint" id="path-hint" style="margin-bottom:8px"></div>
-          <div id="projects-list"></div>
+          <div class="hint" id="path-hint" style="margin-top:6px"></div>
+          <div class="bb-board" id="projects-list"></div>
         </div>
         <div class="card" id="desc-card" style="opacity:0.45;pointer-events:none;transition:opacity .2s">
           <div class="card-title">Project Description</div>
