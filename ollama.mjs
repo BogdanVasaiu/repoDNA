@@ -63,7 +63,7 @@ function getEffectiveMode(precision, contentLength) {
 export async function checkOllama(host) {
   try {
     var r = await fetch(host + "/api/tags", {
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(10000), // 10s — Ollama can be slow when loading models
     });
     if (r.ok) {
       var d = await r.json();

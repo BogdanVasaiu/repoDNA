@@ -332,6 +332,10 @@
               <div class="model-dropdown-list" id="model-dropdown-list"></div>
             </div>
             <div id="model-warning" style="display:none;color:#f87171;font-size:12px;margin-top:6px">⚠ No model selected — please select one before continuing.</div>
+            <div id="cloud-login-hint" style="display:none" class="cloud-login-hint">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span>Cloud model selected — run <code>ollama login</code> in your terminal if not already authenticated.</span>
+            </div>
             <div class="hint" style="margin-top:6px;display:flex;align-items:center;gap:5px;flex-wrap:wrap">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;flex-shrink:0"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
               Local models run on your machine
@@ -526,5 +530,6 @@
     <div id="mpopup-note" style="margin-top:10px;font-size:11px;color:var(--t3);line-height:1.5"></div>
   </div>
 </div>
+<div id="snackbar-container" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none"></div>
 </body>
 </html>

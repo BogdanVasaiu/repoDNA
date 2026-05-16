@@ -883,25 +883,42 @@ async function checkOllamaRow(row) {
     "http://localhost:11434";
   S.ollamaHost = host;
   saveCurrentProjectSettings();
-  try {
-    var r = await fetch("/api/check-ollama?host=" + encodeURIComponent(host));
-    var d = await r.json();
-    S.ollamaOk = d.ok;
-    S.ollamaModels = (d.models || []).map(function (m) {
-      if (typeof m === "string") return { name: m, isCloud: false };
-      return { name: m.name, isCloud: !!m.isCloud };
-    });
-    var statusLabel = d.ok
-      ? "Running · " + S.ollamaModels.length + " models"
-      : d.installed
-        ? "Installed but not running — run: ollama serve"
-        : "Not installed";
-    setCheckStatus(row, d.ok ? "ok" : "error", statusLabel);
-    populateModels();
-    _updateInstallCard(!d.installed);
-  } catch {
-    setCheckStatus(row, "error", "Cannot reach Ollama");
-    _updateInstallCard(true);
+
+  var MAX_ATTEMPTS = 2;
+  for (var attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    if (attempt > 1) {
+      setCheckStatus(row, "checking", "Retrying…");
+      await new Promise(function(r) { setTimeout(r, 3000); });
+    }
+    try {
+      var r = await fetch("/api/check-ollama?host=" + encodeURIComponent(host));
+      var d = await r.json();
+
+      // If Ollama is responding or this is the last attempt, commit the result
+      if (d.ok || attempt === MAX_ATTEMPTS) {
+        S.ollamaOk = d.ok;
+        S.ollamaModels = (d.models || []).map(function (m) {
+          if (typeof m === "string") return { name: m, isCloud: false, size: 0 };
+          return { name: m.name, isCloud: !!m.isCloud, size: m.size || 0 };
+        });
+        var statusLabel = d.ok
+          ? "Running · " + S.ollamaModels.length + " models"
+          : d.installed
+            ? "Installed but not running — run: ollama serve"
+            : "Not installed";
+        setCheckStatus(row, d.ok ? "ok" : "error", statusLabel);
+        populateModels();
+        _updateInstallCard(!d.installed && !d.ok);
+        return;
+      }
+      // First attempt failed — retry once before showing error
+    } catch(e) {
+      if (attempt === MAX_ATTEMPTS) {
+        setCheckStatus(row, "error", "Cannot reach Ollama");
+        _updateInstallCard(true);
+        return;
+      }
+    }
   }
 }
 // ─── INSTALL CARD ─────────────────────────────────────────
@@ -965,6 +982,15 @@ function _updateInstallCard(show) {
     _selectOs(_currentOs, null);
   }
 }
+
+function _updateCloudLoginHint(show) {
+  var el = document.getElementById("cloud-login-hint");
+  if (el) el.style.display = show ? "flex" : "none";
+}
+
+window._dismissCloudLoginHint = function() {
+  _updateCloudLoginHint(false);
+};
 
 window._selectOs = function (os, btn) {
   _currentOs = os;
@@ -1114,6 +1140,7 @@ window._selectModelDropdown = function(name, isCloud) {
   if (dd) dd.classList.remove('open');
   saveCurrentProjectSettings();
   updateModelWarning();
+  _updateCloudLoginHint(isCloud);
 };
 
 // close on outside click
@@ -3041,7 +3068,32 @@ window._exitToStart = async function () {
   runChecks();
 };
 
+var _snackbarApiErrorTimer = null;
+function _showApiErrorSnackbar(isAuth) {
+  if (_snackbarApiErrorTimer) return;
+  var container = document.getElementById("snackbar-container");
+  if (!container) return;
+  var sb = document.createElement("div");
+  sb.className = "snackbar snackbar-warn";
+  var msg = isAuth
+    ? 'Cloud model session expired — run <code style="font-family:var(--mono);font-size:11px">ollama login</code> then retry'
+    : 'Ollama API error — if using a cloud model, run <code style="font-family:var(--mono);font-size:11px">ollama login</code>';
+  sb.innerHTML =
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' +
+    '<span>' + msg + '</span>' +
+    '<button class="snackbar-close" onclick="this.closest(\'.snackbar\').remove();_snackbarApiErrorTimer=null" title="Dismiss">✕</button>';
+  container.appendChild(sb);
+  _snackbarApiErrorTimer = true;
+}
+
 function appendLog(d) {
+  if (d.type === "warn" && d.text) {
+    if (d.text.indexOf("HTTP 401") !== -1 || d.text.indexOf("unauthorized") !== -1) {
+      _showApiErrorSnackbar(true);
+    } else if (d.text.indexOf("Both Ollama APIs failed") !== -1) {
+      _showApiErrorSnackbar(false);
+    }
+  }
   var list = document.getElementById("log-list");
   var icons = { success: "✓", error: "✗", info: "ℹ", warn: "⚠", scan: "🔍" };
   var div = document.createElement("div");

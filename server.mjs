@@ -1148,8 +1148,18 @@ export function startServer() {
         var host = url.searchParams.get("host") || "http://localhost:11434";
         var ollamaResult = await checkOllama(host);
         var ollamaInstalled = false;
-        try { execSync("ollama --version", { stdio: "ignore", timeout: 3000 }); ollamaInstalled = true; } catch (e) {}
+        try { execSync("ollama --version", { stdio: "ignore", timeout: 5000 }); ollamaInstalled = true; } catch (e) {}
         jsonOut(Object.assign({ installed: ollamaInstalled }, ollamaResult));
+        return;
+      } // ── API: Ollama whoami (cloud model login check)
+
+      if (url.pathname === "/api/ollama-whoami") {
+        try {
+          var _whoami = execSync("ollama whoami", { stdio: "pipe", timeout: 4000 }).toString().trim();
+          jsonOut({ loggedIn: !!_whoami, user: _whoami });
+        } catch(e) {
+          jsonOut({ loggedIn: false });
+        }
         return;
       } // ── API: Scan Tree
 

@@ -1469,6 +1469,42 @@ select.input { cursor: pointer; }
 .imodel-speed { font-size: 11px; color: var(--t4); min-width: 60px; text-align: right; white-space: nowrap; font-family: var(--mono); }
 .imodel-add-btn { margin-top: 2px; }
 
+/* ── CLOUD LOGIN HINT (step 03) ─────────────────────────── */
+.cloud-login-hint {
+  display: none; align-items: center; gap: 7px; flex-wrap: wrap;
+  margin-top: 8px; padding: 7px 10px;
+  background: rgba(251,191,36,.06); border: 1px solid rgba(251,191,36,.25);
+  border-radius: var(--r-sm); font-size: 11px; color: var(--t3); line-height: 1.4;
+}
+.cloud-login-hint svg { flex-shrink: 0; color: #f59e0b; }
+.cloud-login-hint code { color: var(--t1); font-family: var(--mono); font-size: 10.5px; }
+.cloud-login-recheck {
+  background: none; border: 1px solid var(--b2); color: var(--t2);
+  border-radius: 4px; padding: 2px 8px; font-size: 10px; cursor: pointer;
+  font-family: var(--font); transition: all .15s; white-space: nowrap;
+}
+.cloud-login-recheck:hover { border-color: var(--a); color: var(--a); }
+
+/* ── SNACKBAR ────────────────────────────────────────────── */
+.snackbar {
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 14px; border-radius: var(--r-sm);
+  font-size: 12px; font-family: var(--font); line-height: 1.4;
+  pointer-events: all; max-width: 480px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.35);
+  animation: snackbar-in .2s ease;
+}
+.snackbar-warn {
+  background: #1c1a13; border: 1px solid rgba(251,191,36,.35); color: var(--t2);
+}
+.snackbar-warn svg { flex-shrink:0; color: #f59e0b; }
+.snackbar-close {
+  background: none; border: none; color: var(--t4); cursor: pointer;
+  font-size: 13px; line-height: 1; padding: 0 0 0 4px; margin-left: auto; flex-shrink: 0;
+}
+.snackbar-close:hover { color: var(--t1); }
+@keyframes snackbar-in { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+
 
 /* ── MODEL DROPDOWN CUSTOM ───────────────────────────────── */
 .model-dropdown { position: relative; }
