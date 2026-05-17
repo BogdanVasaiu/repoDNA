@@ -1132,6 +1132,11 @@ export function startServer() {
         return;
       } // ── API: Set UI page
 
+      if (url.pathname === "/api/ping") {
+        jsonOut({ ok: true });
+        return;
+      }
+
       if (url.pathname === "/api/ui-page" && req.method === "POST") {
         var pageBody = await getBody();
         if (typeof pageBody.page === "number") appState.uiPage = pageBody.page;

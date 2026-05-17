@@ -560,12 +560,9 @@ function connectSSE() {
   };
 
   es.onerror = function () {
-    if (_sseReconnectTimer) return; // already scheduled
-    _sseReconnectTimer = setTimeout(function () {
-      _sseReconnectTimer = null;
-      _sseBackoff = Math.min(_sseBackoff * 2, 30000);
-      connectSSE();
-    }, _sseBackoff);
+    if (_sseReconnectTimer || _serverOffline) return;
+    // Show offline immediately — probe will dismiss it within ~300ms if server is still up
+    _onServerOffline();
   };
 }
 
@@ -606,6 +603,59 @@ function _stopElapsedTimer() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// SERVER OFFLINE DETECTION
+// ═══════════════════════════════════════════════════════════
+var _serverOffline = false;
+var _serverProbeTimer = null;
+
+function _showServerOfflineBanner() {
+  if (document.getElementById("server-offline-overlay")) return;
+  var overlay = document.createElement("div");
+  overlay.id = "server-offline-overlay";
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;backdrop-filter:blur(4px);";
+  overlay.innerHTML =
+    '<div style="background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:32px;max-width:440px;color:#eee;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5);">' +
+      '<div style="font-size:42px;margin-bottom:8px;">⚡</div>' +
+      '<h2 style="margin:0 0 12px;font-size:18px;">Server is not running</h2>' +
+      '<p style="margin:0 0 0;color:#aaa;font-size:14px;line-height:1.5;">Start <code style="background:#2a2a2a;padding:2px 6px;border-radius:4px;">node main.mjs</code> to reconnect. This page will reload automatically when the server comes back.</p>' +
+    '</div>';
+  document.body.appendChild(overlay);
+}
+
+function _cutAllCommunication() {
+  if (es) { try { es.close(); } catch (_) {} es = null; }
+  if (_sseReconnectTimer) { clearTimeout(_sseReconnectTimer); _sseReconnectTimer = null; }
+  if (_elapsedTimer) { clearInterval(_elapsedTimer); _elapsedTimer = null; }
+  if (_saveProjectTimer) { clearTimeout(_saveProjectTimer); _saveProjectTimer = null; }
+}
+
+function _doServerProbe() {
+  fetch("/api/ping", { cache: "no-store", signal: AbortSignal.timeout(500) })
+    .then(function (r) {
+      if (!r.ok) throw new Error();
+      _serverOffline = false;
+      clearInterval(_serverProbeTimer);
+      _serverProbeTimer = null;
+      window.location.reload();
+    })
+    .catch(function () {});
+}
+
+function _onServerOffline() {
+  if (_serverOffline) return;
+  _serverOffline = true;
+  _cutAllCommunication();
+  // Probe immediately — if it was a brief SSE glitch the overlay vanishes in <500ms
+  _doServerProbe();
+  // Then keep probing every 1s until server comes back
+  _serverProbeTimer = setInterval(_doServerProbe, 1000);
+  // Small delay before showing the banner so instant-reconnects don't flash it
+  setTimeout(function () {
+    if (_serverOffline) _showServerOfflineBanner();
+  }, 300);
+}
+
+// ═══════════════════════════════════════════════════════════
 // SINGLE-TAB LOCK
 // ═══════════════════════════════════════════════════════════
 // The server holds one shared appState; multiple tabs would race on wizard
@@ -624,16 +674,14 @@ function _showFollowerBanner() {
     '<div style="background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:32px;max-width:440px;color:#eee;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5);">' +
       '<div style="font-size:42px;margin-bottom:8px;">⚠</div>' +
       '<h2 style="margin:0 0 12px;font-size:18px;">Another window is controlling repoDNA</h2>' +
-      '<p style="margin:0 0 22px;color:#aaa;font-size:14px;line-height:1.5;">Multiple tabs share the same server state and would clobber each other. Close this tab, or take over here to disconnect the other window.</p>' +
-      '<button id="tab-lock-takeover" style="background:#3b82f6;border:0;color:white;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:14px;margin-right:8px;">Take over here</button>' +
-      '<button id="tab-lock-close" style="background:#333;border:0;color:#eee;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:14px;">Close tab</button>' +
+      '<p style="margin:0 0 22px;color:#aaa;font-size:14px;line-height:1.5;">Multiple tabs share the same server state and would clobber each other. Take over here to disconnect the other window.</p>' +
+      '<button id="tab-lock-takeover" style="background:#3b82f6;border:0;color:white;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:14px;">Take over here</button>' +
     '</div>';
   document.body.appendChild(overlay);
   document.getElementById("tab-lock-takeover").onclick = function () {
     if (_bc) _bc.postMessage({ type: "takeover", from: _tabId });
     _becomeLeader();
   };
-  document.getElementById("tab-lock-close").onclick = function () { window.close(); };
 }
 
 function _hideFollowerBanner() {
@@ -653,6 +701,8 @@ function _becomeFollower() {
   _isLeader = false;
   if (es) { try { es.close(); } catch (_) {} es = null; }
   if (_sseReconnectTimer) { clearTimeout(_sseReconnectTimer); _sseReconnectTimer = null; }
+  if (_elapsedTimer) { clearInterval(_elapsedTimer); _elapsedTimer = null; }
+  if (_saveProjectTimer) { clearTimeout(_saveProjectTimer); _saveProjectTimer = null; }
   _showFollowerBanner();
 }
 
