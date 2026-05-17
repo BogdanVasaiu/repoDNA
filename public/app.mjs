@@ -3549,17 +3549,105 @@ window._copyPreview = function(btn) {
   if (S.previewContent) _doCopy(S.previewContent, btn);
 };
 
+// ─── PREVIEW ANCHOR ───────────────────────────────────────
+// Tracks which file section the mouse is over so re-renders
+// don't shift that section out of view.
+var _previewAnchorKey = null;
+var _previewListenersAdded = false;
+var _previewMouseClientX = -1;
+var _previewMouseClientY = -1;
+var _previewScrollRafPending = false;
+
+function _updatePreviewAnchor(panel) {
+  if (_previewMouseClientX < 0) return;
+  var hit = document.elementFromPoint(_previewMouseClientX, _previewMouseClientY);
+  var el = hit && hit.closest && hit.closest(".preview-section[data-key]");
+  var key = el ? el.getAttribute("data-key") : null;
+  if (key === _previewAnchorKey) return;
+  var prev = panel.querySelector(".preview-section.anchor-hover");
+  if (prev) prev.classList.remove("anchor-hover");
+  _previewAnchorKey = key;
+  if (el) el.classList.add("anchor-hover");
+}
+
+function initPreviewListeners() {
+  if (_previewListenersAdded) return;
+  var panel = document.getElementById("preview-panel");
+  if (!panel) return;
+  _previewListenersAdded = true;
+
+  panel.addEventListener("mousemove", function (e) {
+    _previewMouseClientX = e.clientX;
+    _previewMouseClientY = e.clientY;
+    _updatePreviewAnchor(panel);
+  });
+
+  panel.addEventListener("mouseleave", function () {
+    _previewMouseClientX = -1;
+    _previewMouseClientY = -1;
+    var prev = panel.querySelector(".preview-section.anchor-hover");
+    if (prev) prev.classList.remove("anchor-hover");
+    _previewAnchorKey = null;
+  });
+
+  panel.addEventListener("scroll", function () {
+    if (_previewScrollRafPending || _previewMouseClientX < 0) return;
+    _previewScrollRafPending = true;
+    requestAnimationFrame(function () {
+      _previewScrollRafPending = false;
+      _updatePreviewAnchor(panel);
+    });
+  });
+}
+
+// Wraps each h3-delimited section in a div so the anchor logic
+// can find it by its data-key (the file path inside the h3).
+function wrapPreviewSections(html) {
+  var parts = html.split(/(?=<h3[\s>])/);
+  var out = "";
+  for (var i = 0; i < parts.length; i++) {
+    var chunk = parts[i];
+    if (!chunk.trim()) { out += chunk; continue; }
+    var keyMatch = chunk.match(/<h3[^>]*>[^<]*<code>([^<]+)<\/code>/);
+    var key = keyMatch ? keyMatch[1] : "";
+    out += '<div class="preview-section"' +
+      (key ? ' data-key="' + key.replace(/&/g, "&amp;").replace(/"/g, "&quot;") + '"' : "") +
+      ">" + chunk + "</div>";
+  }
+  return out;
+}
+
+function findSectionByKey(panel, key) {
+  var els = panel.querySelectorAll(".preview-section[data-key]");
+  for (var i = 0; i < els.length; i++) {
+    if (els[i].getAttribute("data-key") === key) return els[i];
+  }
+  return null;
+}
+
 function renderPreview() {
   var panel = document.getElementById("preview-panel");
   if (!S.previewContent) {
     S.previewContent = buildInitialPreview();
   }
-  // Capture before rebuild — innerHTML resets scrollTop to 0
+  initPreviewListeners();
+
+  // Capture scroll state before rebuild
   var prevScrollTop = panel.scrollTop;
   var prevScrollHeight = panel.scrollHeight;
   var wasAtBottom = prevScrollHeight - prevScrollTop - panel.clientHeight <= 60;
-  // User is reading — don't disturb them with live re-renders
-  if (!wasAtBottom && !S.previewFinal) return;
+
+  // If user is hovering a section, anchor always wins — even at the bottom
+  var anchorOffsetFromTop = 0;
+  var anchorFound = false;
+  if (_previewAnchorKey) {
+    var anchorEl = findSectionByKey(panel, _previewAnchorKey);
+    if (anchorEl) {
+      anchorOffsetFromTop = anchorEl.getBoundingClientRect().top - panel.getBoundingClientRect().top;
+      anchorFound = true;
+    }
+  }
+
   var badge = S.previewFinal
     ? '<span class="preview-final-badge">final</span>'
     : '<span class="preview-live-badge">● live</span>';
@@ -3573,13 +3661,30 @@ function renderPreview() {
     badge +
     '<button class="result-copy-btn preview-copy-btn" onclick="window._copyPreview(this)" title="Copy full output">Copy</button>' +
     '</div><div class="md-body">' +
-    md2html(S.previewContent) +
+    wrapPreviewSections(md2html(S.previewContent)) +
     "</div>";
-  if (wasAtBottom) {
+
+  // Restore scroll: anchor section keeps its viewport position; fallback to delta
+  var postScrollTop = panel.scrollTop;
+  if (anchorFound) {
+    // Explicit anchor always wins, even when at the bottom
+    var newAnchorEl = findSectionByKey(panel, _previewAnchorKey);
+    if (newAnchorEl) {
+      var newOffset = newAnchorEl.getBoundingClientRect().top - panel.getBoundingClientRect().top;
+      panel.scrollTop = postScrollTop + (newOffset - anchorOffsetFromTop);
+    } else {
+      panel.scrollTop = postScrollTop + (panel.scrollHeight - prevScrollHeight);
+    }
+  } else if (wasAtBottom) {
     panel.scrollTop = panel.scrollHeight;
   } else {
-    // Compensate for content growth so the reading position stays anchored
-    panel.scrollTop = prevScrollTop + (panel.scrollHeight - prevScrollHeight);
+    panel.scrollTop = postScrollTop + (panel.scrollHeight - prevScrollHeight);
+  }
+
+  // Re-apply hover highlight if mouse is still over the anchor section
+  if (_previewAnchorKey) {
+    var hoveredEl = findSectionByKey(panel, _previewAnchorKey);
+    if (hoveredEl) hoveredEl.classList.add("anchor-hover");
   }
 }
 

@@ -375,6 +375,11 @@ export async function analyzeFileWithOllama(
     raw = raw.replace(/(\*\*[^*\n]+\*\*:)\s*\[none\]/gi, "$1 none");
     raw = detectAndFixLoop(raw);
     raw = capListSection(raw, maxListItems);
+    // Models sometimes drop the file header when no project description is given.
+    // Always guarantee the ### `path` line is present so the builder gets a title.
+    if (!raw.startsWith("### `")) {
+      raw = "### `" + rel + "`\n" + raw;
+    }
     return raw;
   }
 

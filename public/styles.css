@@ -1103,6 +1103,8 @@ select.input { cursor: pointer; }
 /* Preview */
 #preview-panel { display: none; flex: 1; overflow-y: auto; overflow-x: hidden; padding: 24px 28px; min-height: 0; background: var(--s2); border: 1px solid var(--b1); border-radius: var(--r-lg); box-shadow: 0 1px 0 rgba(255,255,255,.02) inset, 0 4px 12px rgba(0,0,0,.18); }
 #preview-panel.active { display: block; }
+.preview-section { border-radius: 6px; padding: 4px 8px; margin: -4px -8px; transition: background 0.12s; }
+.preview-section.anchor-hover { background: rgba(255,255,255,0.04); outline: 1px solid rgba(255,255,255,0.07); }
 .preview-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--b1); }
 .preview-copy-btn { margin-left: auto; }
 .preview-title { font-size: 15px; font-weight: 600; color: var(--t1); }
