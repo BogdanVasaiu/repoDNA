@@ -156,6 +156,7 @@ var runnerAbortController = null;
 var retryLock = false; // Signals the main loop to wait while any retry is running
 var retryQueue = []; // File IDs queued for serial retry
 var retryRunning = false; // Is the retry drain loop active?
+var activeRetries = new Map(); // fileId -> AbortController for in-flight retries (per-file stop)
 // catResultMaps: { category -> Map<fileId, content> }
 // Using a Map per category gives O(1) dedup by fileId, eliminating all duplicate-entry bugs.
 var catResultMaps = {};
@@ -233,6 +234,8 @@ async function runAnalysis(config) {
   retryLock = false;
   retryQueue = [];
   retryRunning = false;
+  activeRetries.forEach(function (c) { try { c.abort(); } catch (_) {} });
+  activeRetries.clear();
   appState.deletedFiles = [];
   appState.fileChangeTypes = {};
   completedFiles = new Set(); // Mark where this run's logs start
@@ -416,6 +419,16 @@ async function runAnalysis(config) {
 
   } else if (config.changesOnly && Object.keys(prevHashes).length === 0) {
     log("info", "Smart update enabled — no previous cache found, processing all files");
+  }
+
+  // Every file in the current run must carry a hash-based badge. Smart updates
+  // populate them above; first runs and full rebuilds reach this point with an
+  // empty fileChangeTypes. Treat anything still missing as "created" so the
+  // retried/edited guard has something to protect.
+  for (var _bfi = 0; _bfi < processableFiles.length; _bfi++) {
+    if (!fileChangeTypes[processableFiles[_bfi].id]) {
+      fileChangeTypes[processableFiles[_bfi].id] = "created";
+    }
   }
 
   // ── Inject cached results for unchanged + re-added files ──
@@ -764,10 +777,17 @@ async function drainRetryQueue() {
 }
 
 // Public entry-point: enqueue fileId (deduplicated) and start the drain loop.
+// Deduplicates against both the pending queue AND the currently-executing
+// retry so rapid double-clicks can't kick off duplicate analyses for the
+// same file.
 function retryFile(fileId, precision) {
-  if (!retryQueue.some(function(r) { return r.fileId === fileId; })) {
-    retryQueue.push({ fileId: fileId, precision: precision || null });
+  if (activeRetries.has(fileId)) {
+    return Promise.resolve({ ok: true, deduped: "active" });
   }
+  if (retryQueue.some(function(r) { return r.fileId === fileId; })) {
+    return Promise.resolve({ ok: true, deduped: "queued" });
+  }
+  retryQueue.push({ fileId: fileId, precision: precision || null });
   drainRetryQueue().catch(function (e) {
     log("error", "Retry queue crashed: " + e.message);
   });
@@ -796,13 +816,21 @@ async function _executeRetry(fileId, precisionOverride) {
   }
   // If this file hasn't been counted yet (it was pending), count it now
   var isNewCompletion = !completedFiles.has(fileId);
-  appState.fileStatuses[fileId] = { status: "running" };
-  push("file_status", { file: fileId, status: "running" });
+  appState.fileStatuses[fileId] = { status: "running", retrying: true };
+  push("file_status", { file: fileId, status: "running", retrying: true });
   var retryLabel = precisionOverride ? fileId + " [" + precisionOverride + "]" : fileId;
   log("info", "Retrying: " + retryLabel);
 
+  // Per-file abort controller — enables a Stop button to halt just this file
+  // without killing the whole run. Also forward the global runner abort.
+  var perFileAbort = new AbortController();
+  activeRetries.set(fileId, perFileAbort);
+  var _onGlobalAbort = function () { perFileAbort.abort(); };
+  var _globalSignal = runnerAbortController && runnerAbortController.signal;
+  if (_globalSignal) _globalSignal.addEventListener("abort", _onGlobalAbort);
+  var retrySignal = perFileAbort.signal;
+
   try {
-    var retrySignal = runnerAbortController ? runnerAbortController.signal : new AbortController().signal;
     var result = await analyzeFileWithOllama(
       filePath,
       config.projectPath,
@@ -817,7 +845,16 @@ async function _executeRetry(fileId, precisionOverride) {
         content: result.content,
         category: cat,
       };
-      push("file_status", { file: fileId, status: "ok" });
+      // Only mark as "retried" if no hash-based change badge already covers it
+      var _existingCT = appState.fileChangeTypes[fileId];
+      var _hashBased = _existingCT === "created" || _existingCT === "modified" ||
+                       _existingCT === "readded" || _existingCT === "removed";
+      var _retryChangeType = null;
+      if (!_hashBased) {
+        appState.fileChangeTypes[fileId] = "retried";
+        _retryChangeType = "retried";
+      }
+      push("file_status", { file: fileId, status: "ok", changeType: _retryChangeType });
 
       upsertResult(cat, fileId, result.content);
       upsertResultEvent(cat, fileId, result.content, config.model, effectiveConfig.precision);
@@ -870,7 +907,19 @@ async function _executeRetry(fileId, precisionOverride) {
       return { ok: false, error: reason };
     }
   } catch (e) {
-    if (retrySignal && retrySignal.aborted) return; // user navigated away — drop silently
+    var _globallyAborted = _globalSignal && _globalSignal.aborted;
+    if (_globallyAborted) {
+      // Whole run was aborted (e.g. user clicked global Stop) — drop silently.
+      return;
+    }
+    if (perFileAbort.signal.aborted) {
+      // User clicked Stop on just this file — surface a clear message so the
+      // row's retry button reappears and the user knows it was cancelled.
+      appState.fileStatuses[fileId] = { status: "error", error: "Stopped" };
+      push("file_status", { file: fileId, status: "error", error: "Stopped" });
+      log("warn", "Retry stopped: " + fileId);
+      return;
+    }
     appState.fileStatuses[fileId] = { status: "error", error: e.message };
     push("file_status", { file: fileId, status: "error", error: e.message }); // Count it even on exception so the main loop skips it
 
@@ -891,6 +940,9 @@ async function _executeRetry(fileId, precisionOverride) {
     }
 
     log("error", "Retry FAILED: " + fileId + " - " + e.message);
+  } finally {
+    activeRetries.delete(fileId);
+    if (_globalSignal) _globalSignal.removeEventListener("abort", _onGlobalAbort);
   }
 }
 
@@ -1077,12 +1129,16 @@ export function startServer() {
             var fst = appState.fileStatuses[fid];
             var fstStatus = fst ? fst.status : "pending";
             var fstError = fst ? fst.error || null : null;
+            // Mark as still-retrying if there's an active per-file controller
+            // for it — this lets the client redraw the Stop button on refresh.
+            var fstRetrying = activeRetries.has(fid);
             res.write(
               "event: file_status\ndata: " +
                 JSON.stringify({
                   file: fid,
                   status: fstStatus,
                   error: fstError,
+                  retrying: fstRetrying,
                 }) +
                 "\n\n",
             );
@@ -1342,7 +1398,32 @@ export function startServer() {
           log("error", "Retry crashed: " + e.message);
         });
         return;
-      } // ── API: Reset — full server state wipe (called by Exit)
+      }
+
+      // ── API: Stop a single in-flight retry (or remove a queued one).
+      // The whole-run Stop button uses /api/abort; this one cancels just
+      // one file so other files keep processing.
+      if (url.pathname === "/api/stop-file" && req.method === "POST") {
+        var stopBody = await getBody();
+        var stopFid = stopBody && stopBody.file;
+        if (!stopFid) { jsonOut({ ok: false, error: "Missing file" }); return; }
+        var _stopBefore = retryQueue.length;
+        retryQueue = retryQueue.filter(function (r) { return r.fileId !== stopFid; });
+        var _dequeued = retryQueue.length < _stopBefore;
+        var _ctrl = activeRetries.get(stopFid);
+        var _aborted = false;
+        if (_ctrl) { _ctrl.abort(); _aborted = true; }
+        if (_dequeued && !_aborted) {
+          // It was queued but never started — revert to ok so the row drops
+          // out of the "running" state and the retry button reappears.
+          appState.fileStatuses[stopFid] = { status: "ok" };
+          push("file_status", { file: stopFid, status: "ok" });
+        }
+        jsonOut({ ok: true, dequeued: _dequeued, aborted: _aborted });
+        return;
+      }
+
+      // ── API: Reset — full server state wipe (called by Exit)
       if (url.pathname === "/api/reset" && req.method === "POST") {
         if (runnerAbortController) runnerAbortController.abort();
         resumeAll();
@@ -1369,6 +1450,8 @@ export function startServer() {
         retryQueue = [];
         retryRunning = false;
         retryLock = false;
+        activeRetries.forEach(function (c) { try { c.abort(); } catch (_) {} });
+        activeRetries.clear();
         push("phase", { phase: "wizard" });
         push("ui_page", { page: 0 });
         jsonOut({ ok: true });
@@ -1409,6 +1492,27 @@ export function startServer() {
             break;
           }
         }
+
+        // Mark as "edited" in the run file list, unless a hash-based badge
+        // (created/modified/readded/removed) already describes this file in
+        // the current run — those reflect on-disk state and must be preserved.
+        var _urCT = appState.fileChangeTypes[urFile];
+        var _urHashBased = _urCT === "created" || _urCT === "modified" ||
+                          _urCT === "readded" || _urCT === "removed";
+        var _urChangeType = null;
+        if (!_urHashBased) {
+          appState.fileChangeTypes[urFile] = "edited";
+          _urChangeType = "edited";
+        }
+        // If the file wasn't in the current run list (e.g. unchanged file
+        // served from cache), add it so the activity panel shows it.
+        if (!appState.runFileList.includes(urFile)) {
+          appState.runFileList.push(urFile);
+        }
+        if (!appState.fileStatuses[urFile] || appState.fileStatuses[urFile].status !== "ok") {
+          appState.fileStatuses[urFile] = { status: "ok" };
+        }
+        push("file_status", { file: urFile, status: "ok", changeType: _urChangeType });
 
         // Mirror into catResultMaps + rebuild appState.results
         if (urCat && catResultMaps[urCat]) {

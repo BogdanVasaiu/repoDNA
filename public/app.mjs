@@ -494,8 +494,15 @@ function connectSSE() {
 
   es.addEventListener("file_status", function (e) {
     var d = JSON.parse(e.data);
-    S.fileStatuses[d.file] = { status: d.status, error: d.error || null };
-    if (d.status === "ok" && S.retriedFileIds.has(d.file) && !S.fileChangeTypes[d.file]) {
+    S.fileStatuses[d.file] = { status: d.status, error: d.error || null, retrying: !!d.retrying };
+    // Server-driven output-based badges (retried/edited) — only set if no
+    // hash-based badge already covers this file in the current run.
+    var _ct = S.fileChangeTypes[d.file];
+    var _hashBased = _ct === "created" || _ct === "modified" || _ct === "readded" || _ct === "removed";
+    if (d.changeType && !_hashBased) {
+      S.fileChangeTypes[d.file] = d.changeType;
+    } else if (d.status === "ok" && S.retriedFileIds.has(d.file) && !_ct) {
+      // Legacy fallback (pre-server-side change-type): client-side retry tracking
       S.fileChangeTypes[d.file] = "retried";
     }
     updateFileRow(d.file);
@@ -801,25 +808,40 @@ function createFileRow(fid) {
   var st = S.fileStatuses[fid] || { status: "pending" };
   var ext = fileExt(fid);
   var row = document.createElement("div");
-  row.className = "file-run-row file-run-" + st.status;
+  row.className = "file-run-row file-run-" + st.status +
+    (st.status === "running" && st.retrying ? " file-run-retrying" : "");
   row.dataset.fileId = fid;
 
   var statusIcon =
     { pending: "·", running: "⟳", ok: "✓", error: "⚠", deleted: "✕" }[st.status] || "·";
   var statusClass = "frun-status frun-" + st.status;
   var isDeleted = st.status === "deleted";
-  var retryBtn = isDeleted ? "" :
-    '<button class="frun-retry" title="Retry this file" onclick="_retryFile(\'' +
-    escHtml(fid) +
-    "')\">↺ retry</button>";
+  var isRetrying = st.status === "running" && st.retrying;
+  var isMainRunning = st.status === "running" && !st.retrying;
+  var retryBtn;
+  if (isDeleted) {
+    retryBtn = "";
+  } else if (isRetrying) {
+    retryBtn = '<button class="frun-stop" title="Stop this file" onclick="_stopFile(\'' +
+      escHtml(fid) + "')\">■ stop</button>";
+  } else if (isMainRunning) {
+    // File is being processed by the main scanner — stopping a single file
+    // there would require aborting the whole runner. Hide the button so the
+    // user uses the global Stop control instead.
+    retryBtn = "";
+  } else {
+    retryBtn = '<button class="frun-retry" title="Retry this file" onclick="_retryFile(\'' +
+      escHtml(fid) + "')\">↺ retry</button>";
+  }
 
-  var changeType = S.fileChangeTypes[fid]; // 'created'|'modified'|'readded'|'removed'|undefined
+  var changeType = S.fileChangeTypes[fid]; // 'created'|'modified'|'readded'|'removed'|'retried'|'edited'|undefined
   var changeBadgeMap = {
     created:  '<span class="frun-change frun-change-created"  title="New file">+</span>',
     modified: '<span class="frun-change frun-change-modified" title="Modified">~</span>',
     readded:  '<span class="frun-change frun-change-readded"  title="Re-added">↩</span>',
     removed:  '<span class="frun-change frun-change-removed"  title="Removed">−</span>',
     retried:  '<span class="frun-change frun-change-retried"  title="Retried">↺</span>',
+    edited:   '<span class="frun-change frun-change-edited"   title="Edited">✎</span>',
   };
   var changeBadge = changeBadgeMap[changeType] || "";
 
@@ -887,12 +909,18 @@ function _refreshResultCard(fid) {
 }
 
 window._retryFile = async function (fid, precision) {
+  // Block re-clicks while the file is already running. The server also
+  // dedupes, but this avoids the optimistic UI flicker.
+  if ((S.fileStatuses[fid] || {}).status === "running") return;
   if (S.retryingFiles.has(fid)) return;
   var _card = document.querySelector('.result-card[data-file="' + CSS.escape(fid) + '"]');
-  if (_card && _card.dataset.editing === 'true') return;
+  if (_card && _card.dataset.editing === 'true') {
+    showSnack("Finish or cancel editing this file before retrying.", "warn", 4000);
+    return;
+  }
   S.retryingFiles.add(fid);
   S.retriedFileIds.add(fid);
-  S.fileStatuses[fid] = { status: "running" };
+  S.fileStatuses[fid] = { status: "running", retrying: true };
   updateFileRow(fid);
   _refreshResultCard(fid); // exits edit mode and disables Edit button while retrying
   try {
@@ -906,6 +934,16 @@ window._retryFile = async function (fid, precision) {
     updateFileRow(fid);
   }
   S.retryingFiles.delete(fid);
+};
+
+window._stopFile = async function (fid) {
+  try {
+    await fetch("/api/stop-file", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file: fid }),
+    });
+  } catch (e) {}
 };
 
 window._retryFileWithPrec = function (btn) {
@@ -3303,6 +3341,21 @@ var CAT_LABELS = {
   other: "📄 Other",
 };
 
+// Discard any in-progress card edits across the results panel. Called when the
+// user navigates away (e.g. tab switch) so the file isn't left in edit mode
+// while invisible — which would block retries from the file-run-list.
+function _discardActiveEdits() {
+  var cards = document.querySelectorAll('.result-card[data-editing="true"]');
+  cards.forEach(function(card) {
+    var cancelBtn = card.querySelector('.result-cancel-btn');
+    if (cancelBtn) {
+      window._cancelResultEdit(cancelBtn);
+    } else {
+      card.dataset.editing = 'false';
+    }
+  });
+}
+
 function renderTabs() {
   var bar = document.getElementById("tab-bar");
   bar.innerHTML = "";
@@ -3320,6 +3373,8 @@ function renderTabs() {
       "</span>";
     (function (k) {
       div.addEventListener("click", function () {
+        if (S.activeTab === k && !S.activeTabIsPreview) return;
+        _discardActiveEdits();
         S.activeTab = k;
         S.activeTabIsPreview = false;
         renderTabs();
@@ -3343,6 +3398,8 @@ function renderTabs() {
     .pop();
   previewTab.innerHTML = "📄 " + _previewLabel + liveDot;
   previewTab.addEventListener("click", function () {
+    if (S.activeTabIsPreview) return;
+    _discardActiveEdits();
     S.activeTabIsPreview = true;
     renderTabs();
     showPreviewPanel();
@@ -3378,13 +3435,21 @@ function createResultCard(item, cat) {
   card.dataset.file = item.file || '';
   card.dataset.cat = cat || '';
   var ext = (item.file || "").match(/(\.[^.]+)$/);
-  var isRunning = (S.fileStatuses[item.file] || {}).status === 'running';
+  var _fst = S.fileStatuses[item.file] || {};
+  var isRunning = _fst.status === 'running';
+  var isRetrying = isRunning && _fst.retrying;
   var metaPrec = item.precision || S.precision || 'standard';
   var metaModel = item.model || S.model || '';
   var modelShort = metaModel ? metaModel.split('/').pop().slice(0, 22) : '';
   var metaBadge = (item.precision || item.model)
     ? '<span class="result-meta">' + escHtml(item.precision || '') + (modelShort ? ' · ' + escHtml(modelShort) : '') + '</span>'
     : '';
+  var retryOrStop = isRetrying
+    ? '<div class="retry-ctrl"><button class="result-stop-btn" onclick="window._stopFile(\'' + escHtml(item.file) + '\')" title="Stop this retry">■ Stop</button></div>'
+    : '<div class="retry-ctrl">' +
+        _precSelect(metaPrec, isRunning) +
+        '<button class="result-retry-btn"' + (isRunning ? ' disabled' : '') + ' onclick="window._retryFileWithPrec(this)" title="Re-analyse this file">↺ Retry</button>' +
+      '</div>';
   card.innerHTML =
     '<div class="result-card-head">' +
     getFileBadge(ext ? ext[1] : "") +
@@ -3392,10 +3457,7 @@ function createResultCard(item, cat) {
     escHtml(item.file) +
     '</span>' +
     metaBadge +
-    '<div class="retry-ctrl">' +
-    _precSelect(metaPrec, isRunning) +
-    '<button class="result-retry-btn"' + (isRunning ? ' disabled' : '') + ' onclick="window._retryFileWithPrec(this)" title="Re-analyse this file">↺ Retry</button>' +
-    '</div>' +
+    retryOrStop +
     '<button class="result-edit-btn" ' + (isRunning ? 'disabled style="opacity:0.4;cursor:not-allowed" ' : '') + 'onclick="window._editResultCard(this)" title="Edit this analysis">Edit</button>' +
     '<button class="result-copy-btn" onclick="window._copyResultCard(this)" title="Copy markdown">Copy</button>' +
     '</div><div class="result-card-body md-body">' +
@@ -3543,6 +3605,13 @@ window._applyResultEdit = async function(btn) {
   if (editBtn) editBtn.style.display = '';
   var copyBtn = card.querySelector('.result-copy-btn');
   if (copyBtn) copyBtn.style.display = '';
+  // Re-enable retry controls that were disabled when entering edit mode
+  var retryCtrl = card.querySelector('.retry-ctrl');
+  if (retryCtrl) {
+    retryCtrl.querySelectorAll('button, select').forEach(function(el) { el.disabled = false; });
+    retryCtrl.style.opacity = '';
+    retryCtrl.style.pointerEvents = '';
+  }
 };
 
 window._copyPreview = function(btn) {
