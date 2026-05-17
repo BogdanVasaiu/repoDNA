@@ -8,9 +8,38 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf-8"));
 const CURRENT = pkg.version;
 const GITHUB_REPO = "BogdanVasaiu/repodna";
+const SERVER_PORT = 3741;
+
+// ─── ANSI colors ──────────────────────────────────────────
+const R = "\x1b[31m"; // red — errors
+const G = "\x1b[32m"; // green — success
+const Y = "\x1b[33m"; // yellow — warnings
+const C = "\x1b[36m"; // cyan — paths / commands / URLs
+const B = "\x1b[1m";  // bold
+const D = "\x1b[2m";  // dim — secondary text
+const X = "\x1b[0m";  // reset
 
 const args = process.argv.slice(2);
 const force = args.includes("--force") || args.includes("-f");
+
+async function isServerRunning() {
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 500);
+    const res = await fetch("http://localhost:" + SERVER_PORT + "/api/ping", { signal: ctl.signal });
+    clearTimeout(timer);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+if (await isServerRunning()) {
+  console.log("\n  " + R + "✗" + X + " repoDNA is currently running on port " + B + SERVER_PORT + X + ".");
+  console.log("    Stop it first (Ctrl+C in the terminal running " + C + "node main.mjs" + X + "),");
+  console.log("    " + D + "then run this command again." + X + "\n");
+  process.exit(1);
+}
 
 function run(cmd) {
   return execSync(cmd, { cwd: __dirname, encoding: "utf-8" }).trim();
@@ -28,9 +57,9 @@ function compareVersions(a, b) {
   return 0;
 }
 
-console.log("\n  repoDNA updater");
-console.log("  ───────────────────────────────────");
-console.log("  Current version: " + CURRENT);
+console.log("\n  " + B + "repoDNA updater" + X);
+console.log(D + "  ───────────────────────────────────" + X);
+console.log("  Current version: " + B + CURRENT + X);
 
 let latest, releaseUrl;
 try {
@@ -43,47 +72,47 @@ try {
   const data = await res.json();
   latest = (data.tag_name || "").replace(/^v/, "");
   releaseUrl = data.html_url || "";
-  console.log("done");
+  console.log(G + "done" + X);
 } catch (e) {
-  console.log("failed");
-  console.error("\n  ✗ Could not reach GitHub: " + e.message + "\n");
+  console.log(R + "failed" + X);
+  console.error("\n  " + R + "✗" + X + " Could not reach GitHub: " + e.message + "\n");
   process.exit(1);
 }
 
-console.log("  Latest version:  " + latest);
+console.log("  Latest version:  " + B + latest + X);
 
 if (compareVersions(latest, CURRENT) <= 0) {
-  console.log("\n  ✓ You are already on the latest version.\n");
+  console.log("\n  " + G + "✓" + X + " You are already on the latest version.\n");
   process.exit(0);
 }
 
-console.log("\n  New version available: " + CURRENT + " → " + latest);
-console.log("  " + releaseUrl);
+console.log("\n  New version available: " + B + CURRENT + X + " → " + B + G + latest + X);
+console.log("  " + C + releaseUrl + X);
 
 const dirty = run("git status --porcelain");
 
 if (dirty && !force) {
-  console.log("\n  ✗ You have uncommitted local changes:");
-  dirty.split("\n").forEach(l => console.log("      " + l));
+  console.log("\n  " + R + "✗" + X + " You have uncommitted local changes:");
+  dirty.split("\n").forEach(l => console.log("      " + D + l + X));
   console.log("\n  Update aborted to protect your work.");
-  console.log("  Use --force to stash them automatically.\n");
+  console.log("  " + D + "Use " + X + C + "--force" + X + D + " to stash them automatically." + X + "\n");
   process.exit(1);
 }
 
 let stashed = false;
 if (dirty && force) {
-  console.log("\n  Stashing local changes...");
+  console.log("\n  " + D + "Stashing local changes..." + X);
   run("git stash push -m \"repodna-update-autostash\"");
   stashed = true;
 }
 
-console.log("\n  Pulling latest changes...");
+console.log("\n  " + D + "Pulling latest changes..." + X);
 try {
   run("git fetch origin");
   const out = run("git pull --ff-only origin main");
-  console.log("  " + out.split("\n").join("\n  "));
+  console.log("  " + D + out.split("\n").join("\n  ") + X);
 } catch (e) {
-  console.error("  ✗ git pull failed: " + e.message);
+  console.error("  " + R + "✗" + X + " git pull failed: " + e.message);
   if (stashed) {
     try { run("git stash pop"); } catch (_) {}
   }
@@ -93,12 +122,12 @@ try {
 if (stashed) {
   try {
     run("git stash pop");
-    console.log("  ✓ Stash restored.");
+    console.log("  " + G + "✓" + X + " Stash restored.");
   } catch (e) {
-    console.warn("  ⚠ Could not restore stash: run 'git stash pop' manually.");
+    console.warn("  " + Y + "⚠" + X + " Could not restore stash: run " + C + "git stash pop" + X + " manually.");
   }
 }
 
-console.log("\n  ✓ Updated to " + latest + "!");
+console.log("\n  " + G + "✓" + X + " Updated to " + B + G + latest + X + "!");
 console.log("  Restart repoDNA to apply:\n");
-console.log("    node main.mjs\n");
+console.log("    " + C + "node main.mjs" + X + "\n");

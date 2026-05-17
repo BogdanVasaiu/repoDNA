@@ -1388,7 +1388,7 @@ function renderModelsCatalog() {
     var pullCmd = "ollama pull " + m.ollama_model;
 
     var rowClass = "mcat-row" + (isFlagship ? " is-flagship" : isRec ? " is-recommended" : "");
-    html += '<tr class="' + rowClass + '" onclick="window._setCatalogModelSelect(\'' + escHtml(m.ollama_model) + '\')" title="Click to select this model">' +
+    html += '<tr class="' + rowClass + '">' +
       '<td class="mcat-cell-name">' +
         '<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">' +
           '<span class="mcat-name-main">' + escHtml(m.name) + '</span>' +
@@ -1402,7 +1402,7 @@ function renderModelsCatalog() {
       '<td class="mcat-cell-stars">' + _starsHtml(m.quality_stars) + '</td>' +
       '<td class="mcat-cell-stars">' + _starsHtml(m.speed_stars) + '</td>' +
       '<td class="mcat-cell-action">' +
-        '<button class="mcat-pull-btn" onclick="event.stopPropagation();window._showModelPullPopup(\'' +
+        '<button class="mcat-pull-btn" onclick="window._showModelPullPopup(\'' +
         escHtml(m.name) + '\',\'' + escHtml(pullCmd) + '\',\'' + escHtml(m.type) + '\')" title="Show pull command">⬇ Pull</button>' +
       '</td>' +
     '</tr>';
@@ -1437,7 +1437,7 @@ function renderUserModelsSection() {
     var stat = stats[m.name];
     var speed = stat && stat.avg > 0 ? '~' + stat.avg.toFixed(1) + 's' : '—';
     html +=
-      '<div class="imodel-row" onclick="window._setCatalogModelSelect(\'' + escHtml(m.name) + '\')" title="Click to select">' +
+      '<div class="imodel-row">' +
         '<span class="imodel-type-icon ' + (m.isCloud ? 'imodel-cloud' : 'imodel-local') + '">' + (m.isCloud ? cloudSvg : localSvg) + '</span>' +
         '<span class="imodel-name">' + escHtml(m.name) + '</span>' +
         '<span class="imodel-vram">' + sizeLabel + '</span>' +

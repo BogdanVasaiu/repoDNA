@@ -1531,6 +1531,33 @@ export function startServer() {
       serveStatic(filePath, res);
     });
 
+    server.on("error", async function (err) {
+      if (err && err.code === "EADDRINUSE") {
+        var isOurs = false;
+        try {
+          var ctl = new AbortController();
+          var timer = setTimeout(function () { ctl.abort(); }, 500);
+          var probe = await fetch("http://localhost:" + PORT + "/api/ping", { signal: ctl.signal });
+          clearTimeout(timer);
+          isOurs = probe.ok;
+        } catch (_) {}
+        var R = "\x1b[31m", C = "\x1b[36m", B = "\x1b[1m", D = "\x1b[2m", X = "\x1b[0m";
+        console.log("");
+        if (isOurs) {
+          console.log("  " + R + "✗" + X + " repoDNA is already running on port " + B + PORT + X + ".");
+          console.log("    Open " + C + "http://localhost:" + PORT + X + " in your browser,");
+          console.log("    " + D + "or stop the other instance first (Ctrl+C in its terminal)." + X);
+        } else {
+          console.log("  " + R + "✗" + X + " Port " + B + PORT + X + " is already in use by another process.");
+          console.log("    " + D + "Free the port and try again." + X);
+        }
+        console.log("");
+        process.exit(1);
+      }
+      console.error(err);
+      process.exit(1);
+    });
+
     server.listen(PORT, function () {
       console.log("");
       console.log("  +------------------------------------------+");
