@@ -183,7 +183,15 @@ function buildTree(nodes) {
     node.finalStatus = hasIncluded ? "included" : "excluded";
     return node.finalStatus;
   }
+  function sortNode(node) {
+    node.children.sort(function (a, b) {
+      if (a.type !== b.type) return a.type === "directory" ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    for (const child of node.children) sortNode(child);
+  }
   for (const r of roots) {
+    sortNode(r);
     calcDirStatus(r);
   }
 

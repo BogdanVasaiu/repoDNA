@@ -599,7 +599,11 @@ select.input { cursor: pointer; }
 
 /* State backgrounds */
 .tree-row.status-included  { }
-.tree-row.status-excluded > :not(.tree-guide) { opacity: .32; }
+.tree-row.status-excluded > .tree-toggle,
+.tree-row.status-excluded > .tree-checkbox,
+.tree-row.status-excluded > .tree-ficon,
+.tree-row.status-excluded > .tree-name,
+.tree-row.status-excluded > .tree-meta { opacity: .32; }
 .tree-row.status-ambiguous { background: var(--amb-dim); }
 .tree-row.status-ambiguous:hover { background: rgba(245,158,11,.12); }
 .tree-row.hidden-by-filter { display: none; }
@@ -624,9 +628,21 @@ select.input { cursor: pointer; }
   background: rgba(125,211,252,.14);
 }
 /* Excluded files on a highlighted row — bump opacity so name stays legible */
-.tree-row.highlight-cat.status-excluded > :not(.tree-guide),
-.tree-row.highlight-undecided.status-excluded > :not(.tree-guide),
-.tree-row.highlight-new.status-excluded > :not(.tree-guide) { opacity: .55; }
+.tree-row.highlight-cat.status-excluded > .tree-toggle,
+.tree-row.highlight-cat.status-excluded > .tree-checkbox,
+.tree-row.highlight-cat.status-excluded > .tree-ficon,
+.tree-row.highlight-cat.status-excluded > .tree-name,
+.tree-row.highlight-cat.status-excluded > .tree-meta,
+.tree-row.highlight-undecided.status-excluded > .tree-toggle,
+.tree-row.highlight-undecided.status-excluded > .tree-checkbox,
+.tree-row.highlight-undecided.status-excluded > .tree-ficon,
+.tree-row.highlight-undecided.status-excluded > .tree-name,
+.tree-row.highlight-undecided.status-excluded > .tree-meta,
+.tree-row.highlight-new.status-excluded > .tree-toggle,
+.tree-row.highlight-new.status-excluded > .tree-checkbox,
+.tree-row.highlight-new.status-excluded > .tree-ficon,
+.tree-row.highlight-new.status-excluded > .tree-name,
+.tree-row.highlight-new.status-excluded > .tree-meta { opacity: .55; }
 
 /* Indent guides — ASCII-style connected branches (├── │   └──) */
 .tree-guide {
@@ -660,7 +676,7 @@ select.input { cursor: pointer; }
   border-radius: 3px; transition: all .1s;
 }
 .tree-toggle:hover { color: var(--t1); background: var(--b2); }
-.tree-toggle-file { cursor: default; position: relative; }
+.tree-toggle-file { cursor: default; position: relative; opacity: 1 !important; }
 .tree-toggle-file:hover { color: inherit; background: none; }
 .tree-toggle-file::before {
   content: '';

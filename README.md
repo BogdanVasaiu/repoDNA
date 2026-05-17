@@ -120,6 +120,22 @@ Writes per-file timing and stats to `repodna-debug.log` in the project directory
 
 ---
 
+## Update
+
+```bash
+node update.mjs
+```
+
+Checks GitHub for a newer release and pulls it automatically. Your data in `~/.repodna/` is never touched.
+
+If you have uncommitted local changes, the update will abort to protect your work. Use `--force` to stash them automatically and restore them after:
+
+```bash
+node update.mjs --force
+```
+
+---
+
 ## Uninstall
 
 ```bash

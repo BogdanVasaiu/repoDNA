@@ -772,6 +772,27 @@
             <span class="install-dot dot-red"></span>
             <span class="install-dot dot-amber"></span>
             <span class="install-dot dot-green"></span>
+            <span class="mac-terminal-title" style="color:var(--t4)">Update to latest version</span>
+          </div>
+          <div class="install-block-body">
+            <div class="install-line">
+              <span class="install-prompt">$</span>
+              <span class="install-cmd">node update.mjs</span>
+              <button class="install-copy-btn" onclick="copyInstall('node update.mjs', this)">copy</button>
+            </div>
+            <div class="install-line">
+              <span class="install-prompt">$</span>
+              <span class="install-cmd">node update.mjs <span style="color:var(--t4)">--force</span></span>
+              <button class="install-copy-btn" onclick="copyInstall('node update.mjs --force', this)">copy</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mac-terminal" style="margin-top:12px">
+          <div class="mac-terminal-bar">
+            <span class="install-dot dot-red"></span>
+            <span class="install-dot dot-amber"></span>
+            <span class="install-dot dot-green"></span>
             <span class="mac-terminal-title" style="color:var(--t4)">Remove all cached data</span>
           </div>
           <div class="install-block-body">
