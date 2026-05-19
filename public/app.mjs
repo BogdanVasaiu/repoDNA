@@ -17,6 +17,7 @@ function md2html(t) {
 var S = {
   currentPage: 0,
   ollamaOk: false,
+  ollamaChecking: false,
   ollamaHost: "http://localhost:11434",
   ollamaModels: [],
   projectPath: "",
@@ -110,6 +111,22 @@ function _lookupCatalogEntry(modelName) {
 }
 
 var _projectsList = [];
+var _FILE_COUNTS_KEY = "repodna_file_counts";
+function _getFileCounts() {
+  try { return JSON.parse(localStorage.getItem(_FILE_COUNTS_KEY) || "{}"); } catch(e) { return {}; }
+}
+function _setFileCount(path, count) {
+  try { var c = _getFileCounts(); c[path] = count; localStorage.setItem(_FILE_COUNTS_KEY, JSON.stringify(c)); } catch(e) {}
+}
+function _clearFileCount(path) {
+  try { var c = _getFileCounts(); delete c[path]; localStorage.setItem(_FILE_COUNTS_KEY, JSON.stringify(c)); } catch(e) {}
+}
+
+function _splitPath(p) {
+  var m = p.match(/^(.*[\\/])([^\\/]+)[\\/]?$/);
+  if (!m) return { base: p };
+  return { base: m[2] };
+}
 
 var DEFAULT_CUSTOM_RULES = {
   excludedFolders: [],
@@ -959,10 +976,14 @@ window._retryFileWithPrec = function (btn) {
 // PAGE 0 — CHECKS
 // ═══════════════════════════════════════════════════════════
 async function runChecks() {
+  S.ollamaOk = false;
+  S.ollamaChecking = true;
+  renderUserModelsSection();
   var list = document.getElementById("checks-list");
   list.innerHTML = "";
   var ollamaRow = addCheckRow(list, "🦙", "Ollama", "checking", "Local AI server");
   await checkOllamaRow(ollamaRow);
+  S.ollamaChecking = false;
   renderUserModelsSection();
 }
 async function checkOllamaRow(row) {
@@ -1066,6 +1087,8 @@ function _updateInstallCard(show) {
   var card = document.getElementById("install-card");
   if (!card) return;
   card.classList.toggle("visible", show);
+  var modelsCard = document.getElementById("installed-models-card");
+  if (modelsCard) modelsCard.style.display = show ? "none" : "";
   if (show) {
     _selectOs(_currentOs, null);
   }
@@ -1104,11 +1127,10 @@ window._selectOs = function (os, btn) {
     }
     html += "</div>";
   }
-  if (data.note) {
-    html += '<div style="margin-top:8px;font-size:10.5px;color:var(--t3);line-height:1.55">ℹ ' + data.note + "</div>";
-  }
   var content = document.getElementById("os-install-content");
   if (content) content.innerHTML = html;
+  var note = document.getElementById("os-install-note");
+  if (note) note.innerHTML = data.note || "";
 };
 
 window._copyCmd = function (btn, cmd) {
@@ -1139,10 +1161,14 @@ window._recheckOllama = async function () {
     .getElementById("checks-list")
     .querySelectorAll(".check-row");
   if (rows.length >= 1) {
+    S.ollamaOk = false;
+    S.ollamaChecking = true;
+    renderUserModelsSection();
     setCheckStatus(rows[0], "checking", "Checking…");
     await checkOllamaRow(rows[0]);
+    S.ollamaChecking = false;
   }
-  renderUserModelsSection(); // refresh "Your Installed Models" on page 3
+  renderUserModelsSection();
 };
 function addCheckRow(container, icon, name, status, detail) {
   var row = document.createElement("div");
@@ -1455,8 +1481,27 @@ function renderModelsCatalog() {
 function renderUserModelsSection() {
   var el = document.getElementById("user-models-section");
   if (!el) return;
-  if (!S.ollamaModels || !S.ollamaModels.length) {
-    el.innerHTML = '<div style="color:var(--t4);font-size:12px;padding:4px 0">No models detected — make sure Ollama is running and click Re-check on step 01.</div>';
+  var headerBtn = document.getElementById('imodel-add-header-btn');
+  var recheckBtn = document.getElementById('btn-recheck-ollama');
+  var ollamaUp = S.ollamaOk;
+  var hasModels = S.ollamaModels && S.ollamaModels.length > 0;
+
+  var checking = S.ollamaChecking;
+  if (recheckBtn) recheckBtn.classList.toggle('btn-attention', !ollamaUp && !checking);
+  if (headerBtn) {
+    headerBtn.disabled = !ollamaUp;
+    headerBtn.classList.toggle('btn-attention', ollamaUp && !hasModels);
+  }
+
+  if (!hasModels) {
+    el.innerHTML =
+      '<div class="bb-empty" style="min-height:110px">' +
+        '<div class="bb-empty-icon">' +
+          '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="color:var(--t3)"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg>' +
+        '</div>' +
+        '<div class="bb-empty-title">No models installed</div>' +
+        '<div class="bb-empty-sub">Make sure Ollama is running, then pull your first model from the catalog below.</div>' +
+      '</div>';
     return;
   }
   var stats = _getModelStats();
@@ -1483,7 +1528,6 @@ function renderUserModelsSection() {
       '</div>';
   }
   html += '</div>';
-  html += '<button class="btn-inline imodel-add-btn" onclick="window._showModelCatalog()">+ Add new model</button>';
   el.innerHTML = html;
 
   // If any local model is missing size (server not yet restarted, or Ollama gap),
@@ -1569,7 +1613,7 @@ window._closeModelPopup = function() {
 
 window._copyPopupCmd = function() {
   var cmdEl = document.getElementById("mpopup-cmd");
-  var btn = document.querySelector("#model-pull-popup .install-cmd-copy");
+  var btn = document.querySelector("#model-pull-popup .mpopup-term-copy");
   if (!cmdEl || !btn) return;
   var cmd = cmdEl.textContent;
   navigator.clipboard.writeText(cmd).then(function() {
@@ -1641,24 +1685,30 @@ async function loadProjectList() {
     var d = await r.json();
     _projectsList = d.projects || [];
     if (!_projectsList.length) {
-      list.innerHTML = '<div class="bb-empty"><div class="bb-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="color:var(--t3)"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div><div class="bb-empty-title">No projects yet</div><div class="bb-empty-sub">Paste a folder path above and click + Add</div></div>';
+      list.innerHTML = '<div class="bb-empty"><div class="bb-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="color:var(--t3)"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div><div class="bb-empty-title">No projects yet</div><div class="bb-empty-sub">Paste a folder path and click + Add, or use Browse…</div></div>';
       setDescCardEnabled(false);
       return;
     }
     list.innerHTML = _projectsList
       .map(function (p, i) {
+        var sp = _splitPath(p.projectPath);
+        var counts = _getFileCounts();
+        var cnt = counts[p.projectPath];
+        var countBadge = cnt != null ? '<span class="proj-count">' + cnt + '</span>' : '';
+        var typeBadge = p.projectType ? '<span class="project-type">' + escHtml(p.projectType) + '</span>' : '';
         return (
           '<div class="project-item ' +
           (p.projectPath === S.projectPath ? "active" : "") +
-          '" data-pidx="' +
-          i +
-          '"><svg class="model-chip-icon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span style="font-size:14px"></span><span class="project-name">' +
-          escHtml(p.projectPath) +
-          '</span><span class="project-type">' +
-          escHtml(p.projectType || "") +
-          '</span><button class="project-remove" data-ridx="' +
-          i +
-          '">✕</button></div>'
+          '" data-pidx="' + i + '" title="' + escHtml(p.projectPath) + '">' +
+          '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;color:var(--t4)"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>' +
+          '<div class="project-info">' +
+            '<span class="proj-basename">' + escHtml(sp.base) + '</span>' +
+            '<span class="proj-dir">' + escHtml(p.projectPath) + '</span>' +
+          '</div>' +
+          typeBadge +
+          countBadge +
+          '<button class="project-remove" data-ridx="' + i + '">✕</button>' +
+          '</div>'
         );
       })
       .join("");
@@ -1708,6 +1758,7 @@ async function removeProject(path) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ projectPath: path }),
   });
+  _clearFileCount(path);
   if (S.projectPath === path) {
     S.projectPath = "";
     S.projectType = "UNKNOWN";
@@ -1744,8 +1795,9 @@ async function onPathChange(path) {
       hint.textContent = "Path not found";
       return;
     }
-    hint.className = "hint green";
-    hint.textContent = d.projectType + " project - " + d.fileCount + " items";
+    hint.className = "hint";
+    hint.textContent = "";
+    _setFileCount(path, d.fileCount);
     S.projectType = d.projectType;
     S._pendingTree = d.tree;
   } catch {
@@ -1770,10 +1822,28 @@ document.getElementById("project-desc").addEventListener("input", function () {
 // FOLDER PICKER
 // ═══════════════════════════════════════════════════════════
 var pickerPath = null;
+
+window._browsePath = async function () {
+  var btn = document.getElementById("btn-browse-folder");
+  if (btn) { btn.disabled = true; btn.textContent = "Opening…"; }
+  try {
+    var r = await fetch("/api/browse-folder", { method: "POST" });
+    var d = await r.json();
+    if (d.ok && d.path) {
+      document.getElementById("project-path").value = d.path;
+      await onPathChange(d.path);
+    }
+  } catch (e) {
+    showSnack("Could not open folder picker", "error", 4000);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Browse…"; }
+  }
+};
+
 window._addProject = async function () {
   var path = document.getElementById("project-path").value.trim();
   if (!path) {
-    showSnack('Paste the full path to your project folder — there\'s no OS folder picker. Copy the path from File Explorer, Finder, or your terminal.', 'info', 7000);
+    showSnack('Paste a path or click Browse… to pick a folder.', 'info', 4000);
     document.getElementById("project-path").focus();
     return;
   }
@@ -1815,12 +1885,13 @@ window._addProject = async function () {
         description: "",
       }),
     });
+    _setFileCount(path, d.fileCount);
     await loadProjectList();
     await selectProject(path);
     document.getElementById("project-path").value = "";
     document.getElementById("project-desc").value = "";
-    hint.className = "hint green";
-    hint.textContent = d.projectType + " project · " + d.fileCount + " files";
+    hint.className = "hint";
+    hint.textContent = "";
   } catch (e) {
     hint.className = "hint red";
     hint.textContent = "Error: " + e.message;
@@ -2023,7 +2094,7 @@ function createTreeNode(node, depth, isLast, lineage) {
     }
     var badge = "";
     if (isAutoExcluded && !S.userOverrides.has(node.id))
-      badge = '<span class="tree-badge auto-exc">auto</span>';
+      badge = '<span class="tree-badge auto-exc">excluded</span>';
     else if (autoSt === "ambiguous" && !S.userOverrides.has(node.id))
       badge = '<span class="tree-badge amb">decide</span>';
     if (S.userOverrides.has(node.id))
@@ -2032,7 +2103,7 @@ function createTreeNode(node, depth, isLast, lineage) {
           ? '<span class="tree-badge user-inc">manual</span>'
           : '<span class="tree-badge user-exc">manual</span>';
     var dirBtnsHTML =
-      '<span class="dir-inline-btns"><button class="dir-btn dir-btn-inc" data-da="include">☑ Include all</button><button class="dir-btn dir-btn-exc" data-da="exclude">☐ Exclude all</button></span>';
+      '<span class="dir-inline-btns"><button class="dir-btn dir-btn-inc" data-da="include">☑ Select all</button><button class="dir-btn dir-btn-exc" data-da="exclude">☐ Unselect all</button></span>';
     row.innerHTML =
       indentHTML +
       '<span class="tree-toggle">' +
@@ -2134,8 +2205,9 @@ function createTreeNode(node, depth, isLast, lineage) {
     var autoSt2 = node.autoStatus;
     var ext2 = node.extension || "";
     var sizeLabel = node.size ? formatSize(node.size) : "";
+    var isLockedExcluded = autoSt2 === "excluded" && !S.userOverrides.has(node.id);
     var row2 = document.createElement("div");
-    row2.className = "tree-row status-" + finalSt2;
+    row2.className = "tree-row status-" + finalSt2 + (isLockedExcluded ? " tree-row-locked" : "");
     var cbClass2, cbIcon2;
     if (S.userOverrides.has(node.id)) {
       cbClass2 = finalSt2 === "included" ? "cb-included" : "cb-excluded";
@@ -2157,13 +2229,8 @@ function createTreeNode(node, depth, isLast, lineage) {
       badge2 = '<span class="tree-badge amb">decide</span>';
     if (autoSt2 === "ambiguous" && S.userOverrides.has(node.id))
       badge2 = finalSt2 === "included"
-        ? '<span class="tree-badge user-inc">manual ✓</span>'
-        : '<span class="tree-badge user-exc">manual ✗</span>';
-    if (autoSt2 !== "ambiguous" && S.userOverrides.has(node.id))
-      badge2 =
-        finalSt2 === "included"
-          ? '<span class="tree-badge user-inc">included</span>'
-          : '<span class="tree-badge user-exc">excluded</span>';
+        ? '<span class="tree-badge user-inc">decided ✓</span>'
+        : '<span class="tree-badge user-exc">undecided ✗</span>';
     var newBadge = node.isNew ? '<span class="tree-badge tree-badge-new">new</span>' : "";
     row2.innerHTML =
       indentHTML +
@@ -2185,10 +2252,22 @@ function createTreeNode(node, depth, isLast, lineage) {
       "</span>";
     row2.addEventListener("click", function (e) {
       e.stopPropagation();
-      S.userOverrides.set(
-        node.id,
-        getFinalStatus(node) === "included" ? "excluded" : "included",
-      );
+      if (isLockedExcluded) return;
+      if (autoSt2 === "ambiguous") {
+        if (!S.userOverrides.has(node.id)) {
+          S.userOverrides.set(node.id, "included");
+        } else if (S.userOverrides.get(node.id) === "included") {
+          S.userOverrides.set(node.id, "excluded");
+        } else {
+          S.userOverrides.delete(node.id);
+        }
+      } else {
+        if (S.userOverrides.has(node.id)) {
+          S.userOverrides.delete(node.id);
+        } else {
+          S.userOverrides.set(node.id, getFinalStatus(node) === "included" ? "excluded" : "included");
+        }
+      }
       renderTree();
       renderCategoryChips();
       refreshFileCount();
@@ -2591,7 +2670,7 @@ function renderAdvContent() {
       ? ' <span style="font-size:9px;background:rgba(32,227,160,.12);color:var(--a);padding:1px 5px;border-radius:3px">+added</span>'
       : it.isRemoved
         ? ' <span style="font-size:9px;background:rgba(248,113,113,.1);color:var(--err);padding:1px 5px;border-radius:3px">−removed</span>'
-        : ' <span style="font-size:9px;color:var(--t3);font-weight:500">(default)</span>';
+        : '';
     h +=
       '<div class="' +
       rowClass +

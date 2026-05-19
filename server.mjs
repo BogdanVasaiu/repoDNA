@@ -1193,6 +1193,56 @@ export function startServer() {
         return;
       }
 
+      // ── API: Browse folder (native OS folder picker) ──────
+      if (url.pathname === "/api/browse-folder" && req.method === "POST") {
+        var picked = null;
+        try {
+          var plt = process.platform;
+          if (plt === "win32") {
+            var psCmd = [
+              "Add-Type -AssemblyName System.Windows.Forms",
+              "$o = New-Object System.Windows.Forms.Form",
+              "$o.TopMost = $true",
+              "$o.WindowState = 'Minimized'",
+              "$o.ShowInTaskbar = $false",
+              "$o.Show()",
+              "$f = New-Object System.Windows.Forms.FolderBrowserDialog",
+              "$f.Description = 'Select project folder'",
+              "$f.ShowNewFolderButton = $true",
+              "if ($f.ShowDialog($o) -eq [System.Windows.Forms.DialogResult]::OK) { Write-Output $f.SelectedPath }",
+              "$o.Dispose()"
+            ].join("; ");
+            picked = execSync(
+              "powershell -NoProfile -NonInteractive -Command \"" + psCmd.replace(/"/g, '\\"') + "\"",
+              { encoding: "utf8", timeout: 120000 }
+            ).trim() || null;
+          } else if (plt === "darwin") {
+            var raw = execSync(
+              "osascript -e 'set p to choose folder with prompt \"Select project folder\"' -e 'POSIX path of p'",
+              { encoding: "utf8", timeout: 120000 }
+            ).trim();
+            picked = raw.replace(/\/$/, "") || null;
+          } else {
+            // Linux: try zenity then kdialog
+            try {
+              picked = execSync(
+                "zenity --file-selection --directory --title='Select project folder'",
+                { encoding: "utf8", timeout: 120000 }
+              ).trim() || null;
+            } catch (_) {
+              try {
+                picked = execSync(
+                  "kdialog --getexistingdirectory / --title 'Select project folder'",
+                  { encoding: "utf8", timeout: 120000 }
+                ).trim() || null;
+              } catch (_2) { picked = null; }
+            }
+          }
+        } catch (e) { picked = null; }
+        jsonOut({ ok: !!picked, path: picked });
+        return;
+      }
+
       if (url.pathname === "/api/ui-page" && req.method === "POST") {
         var pageBody = await getBody();
         if (typeof pageBody.page === "number") appState.uiPage = pageBody.page;
