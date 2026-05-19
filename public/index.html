@@ -144,8 +144,10 @@
         </div>
         <div class="bb-card" id="projects-card">
           <div class="bb-add-row">
-            <input class="input" id="project-path" placeholder="Paste or browse to your project folder" style="flex:1" spellcheck="false">
-            <button class="btn-inline" onclick="window._addProject()">+ Add</button>
+            <div class="bb-input-group">
+              <input class="input" id="project-path" placeholder="Paste or browse to your project folder" spellcheck="false">
+              <button class="bb-input-add" id="btn-add-project" onclick="window._addProject()">+ Add</button>
+            </div>
             <button class="btn-inline" id="btn-browse-folder" onclick="window._browsePath()" title="Open folder picker">Browse…</button>
           </div>
           <div class="hint" id="path-hint" style="margin-top:1px"></div>

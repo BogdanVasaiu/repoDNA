@@ -267,6 +267,26 @@ select.input { cursor: pointer; }
   display: flex; align-items: center; gap: 8px;
   position: relative; z-index: 1;
 }
+.bb-input-group {
+  flex: 1; display: flex; align-items: stretch; min-width: 0;
+  border: 1px solid var(--b2); border-radius: var(--r-sm);
+  background: var(--s4); transition: border-color .15s, box-shadow .15s;
+}
+.bb-input-group > .input {
+  flex: 1; min-width: 0; border: none; border-radius: var(--r-sm) 0 0 var(--r-sm);
+  background: var(--s2);
+}
+.bb-input-group > .input:focus { border-color: transparent; box-shadow: none; }
+.bb-input-add {
+  flex-shrink: 0; background: none; border: none; border-left: 1px solid var(--b2);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  color: var(--t2); padding: 0 16px; font-size: 13px; font-weight: 500;
+  font-family: var(--font); cursor: pointer; white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.bb-input-add:hover { color: var(--a); background: var(--a-dim); }
+.bb-input-add.btn-attention { animation: btn-attention 2s ease-in-out infinite; }
+.bb-input-add.btn-attention:hover { animation: none; }
 .bb-board {
   min-height: 184px; margin-top: 14px;
   border: 1px solid rgba(255,255,255,.1);

@@ -1687,6 +1687,7 @@ async function loadProjectList() {
     if (!_projectsList.length) {
       list.innerHTML = '<div class="bb-empty"><div class="bb-empty-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="color:var(--t3)"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div><div class="bb-empty-title">No projects yet</div><div class="bb-empty-sub">Paste a folder path and click + Add, or use Browse…</div></div>';
       setDescCardEnabled(false);
+      _updatePathAttention();
       return;
     }
     list.innerHTML = _projectsList
@@ -1729,6 +1730,7 @@ async function loadProjectList() {
   } catch {
     list.innerHTML = '<div style="color:var(--red);font-size:12px">Error</div>';
   }
+  _updatePathAttention();
 }
 async function selectProject(path) {
   document.getElementById("project-path").value = "";
@@ -1774,14 +1776,37 @@ async function removeProject(path) {
   }
   await loadProjectList();
 }
+// 'empty' | 'checking' | 'valid' | 'error'
+var _pathValidState = "empty";
+var _pathDebounceTimer = null;
+
+function _updatePathAttention() {
+  var browse = document.getElementById("btn-browse-folder");
+  var add = document.getElementById("btn-add-project");
+  var hasProjects = _projectsList && _projectsList.length > 0;
+  if (hasProjects) {
+    if (browse) browse.classList.remove("btn-attention");
+    if (add) add.classList.remove("btn-attention");
+    return;
+  }
+  var browseGlows = _pathValidState === "empty" || _pathValidState === "error";
+  var addGlows = _pathValidState === "valid";
+  if (browse) browse.classList.toggle("btn-attention", browseGlows);
+  if (add) add.classList.toggle("btn-attention", addGlows);
+}
+
 async function onPathChange(path) {
-  S.projectPath = path;
+  // Validation only — never mutates S.projectPath (that's selectProject's job)
   var hint = document.getElementById("path-hint");
   if (!path) {
     hint.textContent = "";
     hint.className = "hint";
+    _pathValidState = "empty";
+    _updatePathAttention();
     return;
   }
+  _pathValidState = "checking";
+  _updatePathAttention();
   try {
     var r = await fetch(
       "/api/scan-tree?path=" +
@@ -1793,27 +1818,51 @@ async function onPathChange(path) {
     if (!d.ok) {
       hint.className = "hint red";
       hint.textContent = "Path not found";
+      _pathValidState = "error";
+      _updatePathAttention();
       return;
     }
     hint.className = "hint";
     hint.textContent = "";
     _setFileCount(path, d.fileCount);
-    S.projectType = d.projectType;
-    S._pendingTree = d.tree;
+    _pathValidState = "valid";
+    _updatePathAttention();
   } catch {
     hint.className = "hint red";
     hint.textContent = "Could not check path";
+    _pathValidState = "error";
+    _updatePathAttention();
   }
 }
-document.getElementById("project-path").addEventListener("blur", function (e) {
-  var v = e.target.value.trim();
-  if (v) onPathChange(v);
-});
-document
-  .getElementById("project-path")
-  .addEventListener("keydown", function (e) {
-    if (e.key === "Enter") onPathChange(e.target.value.trim());
+
+(function () {
+  var inp = document.getElementById("project-path");
+  inp.addEventListener("input", function (e) {
+    var v = e.target.value.trim();
+    clearTimeout(_pathDebounceTimer);
+    var hint = document.getElementById("path-hint");
+    if (!v) {
+      hint.className = "hint"; hint.textContent = "";
+      _pathValidState = "empty";
+      _updatePathAttention();
+      return;
+    }
+    // Clear stale error immediately while the user is editing
+    if (hint.classList.contains("red")) {
+      hint.className = "hint"; hint.textContent = "";
+      _pathValidState = "checking";
+      _updatePathAttention();
+    }
+    _pathDebounceTimer = setTimeout(function () { onPathChange(v); }, 520);
   });
+  inp.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { clearTimeout(_pathDebounceTimer); onPathChange(e.target.value.trim()); }
+  });
+  inp.addEventListener("blur", function (e) {
+    var v = e.target.value.trim();
+    if (v && _pathValidState !== "valid") { clearTimeout(_pathDebounceTimer); onPathChange(v); }
+  });
+}());
 document.getElementById("project-desc").addEventListener("input", function () {
   saveCurrentProjectSettings();
 });
@@ -1861,6 +1910,8 @@ window._addProject = async function () {
     if (!d.ok) {
       hint.className = "hint red";
       hint.textContent = "Path doesn't exist or can't be read.";
+      _pathValidState = "error";
+      _updatePathAttention();
       return;
     }
     // If already exists, just select it without overwriting
@@ -1892,9 +1943,13 @@ window._addProject = async function () {
     document.getElementById("project-desc").value = "";
     hint.className = "hint";
     hint.textContent = "";
+    _pathValidState = "empty";
+    _updatePathAttention();
   } catch (e) {
     hint.className = "hint red";
     hint.textContent = "Error: " + e.message;
+    _pathValidState = "error";
+    _updatePathAttention();
   }
 };
 
@@ -3036,10 +3091,19 @@ window._goToPage = function (n) {
     return;
   }
   if (n > 1) {
-    S.projectPath =
-      document.getElementById("project-path").value.trim() || S.projectPath;
-    if (!S.projectPath) {
-      alert("Select a project folder.");
+    // A project must be selected from the registered list — typing in the field is not enough
+    var _registered = (_projectsList || []).find(function (p) {
+      return p.projectPath === S.projectPath;
+    });
+    if (!_registered) {
+      var _inputVal = document.getElementById("project-path").value.trim();
+      if (_inputVal && _pathValidState === "valid") {
+        showSnack('Click "+ Add" to register this project before continuing.', "info", 5000);
+      } else if (_inputVal) {
+        showSnack("That path isn't valid — fix it or use Browse…", "info", 4000);
+      } else {
+        showSnack("Add a project folder before continuing.", "info", 4000);
+      }
       return;
     }
   }
