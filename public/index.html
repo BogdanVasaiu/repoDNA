@@ -316,7 +316,7 @@
           <div class="toggle-row">
             <div>
               <div class="toggle-label">Smart Update</div>
-              <div class="toggle-desc">Detects added, modified and deleted files since the last run using MD5 hashes. Unchanged files reuse their cached analysis. The context file is always rebuilt from the cache — manual edits to it won't be preserved.</div>            </div>
+              <div class="toggle-desc"><strong>ON</strong> — Only re-analyzes files changed since the last run; unchanged files reuse their cached result (manual edits and retries included). <strong>OFF</strong> — Clears all cache and re-analyzes everything from scratch.</div>            </div>
             <div class="toggle" id="toggle-changes" style="margin-left: 15px" onclick="window._toggleChange()"></div>
           </div>
           <div class="toggle-row">

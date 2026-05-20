@@ -248,6 +248,20 @@ async function runAnalysis(config) {
   log("info", "Model: " + config.model + " | Precision: " + config.precision); // ── Hash cache
 
   var hashCacheFile = hashCachePath(config.projectPath);
+  var resultCacheFileEarly = resultCachePath(config.projectPath);
+  var newFilesCacheFileEarly = newFilesCachePath(config.projectPath);
+
+  // Full run (Smart Update OFF) — wipe hash and result caches from disk immediately.
+  // new-files.json is intentionally preserved: it tracks which files existed in the
+  // previous scan so genuinely new files can still be detected and badged in the UI.
+  // This guarantees that an interrupted run leaves a clean slate: the next
+  // Smart Update ON run won't find stale hashes and silently skip files.
+  if (!config.changesOnly) {
+    try { if (existsSync(hashCacheFile)) unlinkSync(hashCacheFile); } catch {}
+    try { if (existsSync(resultCacheFileEarly)) unlinkSync(resultCacheFileEarly); } catch {}
+    log("info", "Full run — hash and result cache cleared");
+  }
+
   var prevHashes = {};
   if (existsSync(hashCacheFile)) {
     try {
@@ -309,6 +323,12 @@ async function runAnalysis(config) {
   var _newlyAddedFileIds = (_prevAllFileIds !== null && _prevAllFileIds.size > 0)
     ? _allCurrentFileIds.filter(function(id) { return !_prevAllFileIds.has(id); })
     : [];
+
+  // Update the baseline NOW (at run start, not at completion) so that:
+  // - Refreshing step 03 still shows the same "new" badges (baseline unchanged until next run)
+  // - Even an interrupted run advances the baseline, so the next step-03 open shows
+  //   only files added *after* this run was started.
+  saveNewFilesCache(_newFilesCacheFile, _newlyAddedFileIds, _allCurrentFileIds);
 
   var newHashes = {};
   for (var hi = 0; hi < filesToProcess.length; hi++) {
@@ -878,9 +898,53 @@ async function _executeRetry(fileId, precisionOverride) {
 
       log("success", "Retry OK: " + fileId);
 
-      var md = buildClaudeMd(appState.results, config, [], "", null);
-      appState.previewContent = md;
-      push("preview", { content: md });
+      // Persist retry result to disk immediately.
+      // The main run's saveResultCache may have already been called (post-run retry);
+      // writing directly here ensures the result survives the next Smart Update ON run.
+      try {
+        var _retryCacheFile = resultCachePath(config.projectPath);
+        var _retryCache = loadResultCache(_retryCacheFile);
+        var _retryFileHash = fileHash(join(config.projectPath, fileId));
+        if (_retryCache[fileId]) {
+          _retryCache[fileId].content = result.content;
+          _retryCache[fileId].hash = _retryFileHash;
+          _retryCache[fileId].model = config.model;
+          _retryCache[fileId].precision = effectiveConfig.precision;
+        } else {
+          _retryCache[fileId] = {
+            category: cat,
+            content: result.content,
+            hash: _retryFileHash,
+            model: config.model,
+            precision: effectiveConfig.precision,
+          };
+        }
+        writeFileSync(_retryCacheFile, JSON.stringify(_retryCache));
+
+        // Rebuild output file from the full updated cache (same as update-result)
+        var _retryRelFile = AGENT_TARGETS_SERVER[config.agentTarget] || "CLAUDE.md";
+        var _retryAbsPath = join(config.projectPath, _retryRelFile);
+        var _retryAbsDir = dirname(_retryAbsPath);
+        var _retryMaps = {};
+        for (var _rk in _retryCache) {
+          if (_rk === "_presentFiles") continue;
+          var _rEntry = _retryCache[_rk];
+          if (!_rEntry || !_rEntry.category) continue;
+          if (!_retryMaps[_rEntry.category]) _retryMaps[_rEntry.category] = new Map();
+          _retryMaps[_rEntry.category].set(_rk, _rEntry.content);
+        }
+        var _retryMd = buildClaudeMd(catMapsToResults(_retryMaps), config, [], config.projectPath, null);
+        if (!existsSync(_retryAbsDir)) mkdirSync(_retryAbsDir, { recursive: true });
+        writeFileSync(_retryAbsPath, _retryMd, "utf-8");
+        appState.previewContent = _retryMd;
+        appState.previewFinal = true;
+        push("preview", { content: _retryMd, final: true });
+      } catch (_retryPersistErr) {
+        log("warn", "Could not persist retry to cache: " + _retryPersistErr.message);
+        var md = buildClaudeMd(appState.results, config, [], "", null);
+        appState.previewContent = md;
+        push("preview", { content: md });
+      }
 
       return { ok: true };
     } else {
