@@ -72,25 +72,32 @@ var S = {
 
 var _ollamaCatalog = null;   // curated models list from ollama_models.json
 var _catalogFilter = "local"; // "local" | "cloud"
-var _MODEL_STATS_KEY = "repodna_model_stats";
-var _SPEED_WINDOW = 5; // rolling average over last N runs
+var _SPEED_WINDOW = 10; // rolling average over last N files
+var _modelStatsCache = {}; // loaded from ~/.repodna/model_stats.json via server
 var _sizeFetchScheduled = false;
 
-function _getModelStats() {
-  try { return JSON.parse(localStorage.getItem(_MODEL_STATS_KEY) || "{}"); } catch(e) { return {}; }
-}
-function _saveModelStat(modelName, avgSecPerFile) {
-  if (!modelName || !(avgSecPerFile > 0)) return;
+function _getModelStats() { return _modelStatsCache; }
+
+async function _loadModelStats() {
   try {
-    var stats = _getModelStats();
-    var s = stats[modelName] || { samples: [] };
-    if (!Array.isArray(s.samples)) s.samples = s.avg > 0 ? [s.avg] : []; // migrate old EMA format
-    s.samples.push(avgSecPerFile);
-    if (s.samples.length > _SPEED_WINDOW) s.samples.splice(0, s.samples.length - _SPEED_WINDOW);
-    s.avg = s.samples.reduce(function(a, b) { return a + b; }, 0) / s.samples.length;
-    stats[modelName] = s;
-    localStorage.setItem(_MODEL_STATS_KEY, JSON.stringify(stats));
+    var r = await fetch("/api/model-stats");
+    if (r.ok) _modelStatsCache = await r.json();
   } catch(e) {}
+}
+
+function _saveModelStat(modelName, tokensPerSecond) {
+  if (!modelName || !(tokensPerSecond > 0)) return;
+  var s = _modelStatsCache[modelName] || { samples: [] };
+  if (!Array.isArray(s.samples)) s.samples = [];
+  s.samples.push(tokensPerSecond);
+  if (s.samples.length > _SPEED_WINDOW) s.samples.splice(0, s.samples.length - _SPEED_WINDOW);
+  s.avg = s.samples.reduce(function(a, b) { return a + b; }, 0) / s.samples.length;
+  _modelStatsCache[modelName] = s;
+  fetch("/api/model-stats", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(_modelStatsCache)
+  }).catch(function() {});
 }
 function _fmtModelSize(bytes) {
   if (!bytes || bytes <= 0) return '—';
@@ -523,6 +530,10 @@ function connectSSE() {
       S.fileChangeTypes[d.file] = "retried";
     }
     updateFileRow(d.file);
+    if (d.status === "ok" && d.tokensPerSecond > 0 && S.model) {
+      _saveModelStat(S.model, d.tokensPerSecond);
+      renderUserModelsSection();
+    }
   });
 
   // ── result: client-side dedup by file id across all categories ──
@@ -1505,26 +1516,31 @@ function renderUserModelsSection() {
     return;
   }
   var stats = _getModelStats();
+  var sortedModels = S.ollamaModels.slice().sort(function(a, b) {
+    if (a.isCloud !== b.isCloud) return a.isCloud ? 1 : -1;
+    if (!a.isCloud) return (b.size || 0) - (a.size || 0);
+    return a.name.localeCompare(b.name);
+  });
   var localSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>';
   var cloudSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>';
   var html =
     '<div class="imodels-header">' +
       '<span class="imodel-hdr-name">Model</span>' +
       '<span class="imodel-hdr-size">Size</span>' +
-      '<span class="imodel-hdr-speed">Avg</span>' +
+      '<span class="imodel-hdr-speed">tok/s</span>' +
     '</div>' +
     '<div class="imodels-list">';
-  for (var i = 0; i < S.ollamaModels.length; i++) {
-    var m = S.ollamaModels[i];
+  for (var i = 0; i < sortedModels.length; i++) {
+    var m = sortedModels[i];
     var sizeLabel = m.isCloud ? 'cloud' : _fmtModelSize(m.size);
     var stat = stats[m.name];
-    var speed = stat && stat.avg > 0 ? '~' + stat.avg.toFixed(1) + 's' : '—';
+    var speed = stat && stat.avg > 0 ? '~' + Math.round(stat.avg) + ' tok/s' : '—';
     html +=
       '<div class="imodel-row">' +
         '<span class="imodel-type-icon ' + (m.isCloud ? 'imodel-cloud' : 'imodel-local') + '">' + (m.isCloud ? cloudSvg : localSvg) + '</span>' +
         '<span class="imodel-name">' + escHtml(m.name) + '</span>' +
         '<span class="imodel-vram">' + sizeLabel + '</span>' +
-        '<span class="imodel-speed" title="Avg time per file from your runs">' + speed + '</span>' +
+        '<span class="imodel-speed" title="Avg generation speed from your runs (tok/s)">' + speed + '</span>' +
       '</div>';
   }
   html += '</div>';
@@ -1871,23 +1887,40 @@ document.getElementById("project-desc").addEventListener("input", function () {
 // FOLDER PICKER
 // ═══════════════════════════════════════════════════════════
 var pickerPath = null;
+var _browseAbortCtrl = null;
+
+function _cancelBrowse() {
+  if (_browseAbortCtrl) {
+    _browseAbortCtrl.abort();
+    _browseAbortCtrl = null;
+  }
+  var btn = document.getElementById("btn-browse-folder");
+  if (btn) { btn.disabled = false; btn.textContent = "Browse…"; }
+}
 
 window._browsePath = async function () {
+  _cancelBrowse();
   var btn = document.getElementById("btn-browse-folder");
   if (btn) { btn.disabled = true; btn.textContent = "Opening…"; }
+  _browseAbortCtrl = new AbortController();
   try {
-    var r = await fetch("/api/browse-folder", { method: "POST" });
+    var r = await fetch("/api/browse-folder", { method: "POST", signal: _browseAbortCtrl.signal });
     var d = await r.json();
     if (d.ok && d.path) {
       document.getElementById("project-path").value = d.path;
       await onPathChange(d.path);
     }
   } catch (e) {
-    showSnack("Could not open folder picker", "error", 4000);
+    if (e.name !== "AbortError") {
+      showSnack("Could not open folder picker", "error", 4000);
+    }
   } finally {
+    _browseAbortCtrl = null;
     if (btn) { btn.disabled = false; btn.textContent = "Browse…"; }
   }
 };
+
+window.addEventListener("beforeunload", _cancelBrowse);
 
 window._addProject = async function () {
   var path = document.getElementById("project-path").value.trim();
@@ -3086,6 +3119,7 @@ window._page2Continue = function () {
 // NAVIGATION
 // ═══════════════════════════════════════════════════════════
 window._goToPage = function (n) {
+  if (n !== 1) _cancelBrowse();
   if (n > 0 && !S.ollamaOk) {
     alert("Ollama must be running.");
     return;
@@ -3456,10 +3490,6 @@ function onDone() {
   }
   document.getElementById("current-file").textContent = sub;
   updateRunControls();
-  if (S.model && S.runTotal > 0 && _elapsedBase > 0) {
-    _saveModelStat(S.model, _elapsedBase / S.runTotal);
-    renderUserModelsSection();
-  }
 }
 // ═══════════════════════════════════════════════════════════
 // RESULTS TABS
@@ -3904,6 +3934,7 @@ function renderPreview() {
 // INIT
 // ═══════════════════════════════════════════════════════════
 window.addEventListener("DOMContentLoaded", async function () {
+  _loadModelStats();
   checkForUpdate();
   runChecks();
   loadOllamaModelsCatalog(); // carica il catalog JSON locale

@@ -13,7 +13,7 @@ import { fileURLToPath } from "url";
 import { createServer } from "http";
 import { createHash } from "crypto";
 import { homedir } from "os";
-import { execSync } from "child_process";
+import { execSync, exec } from "child_process";
 
 import {
   loadConfig,
@@ -26,6 +26,7 @@ import {
   hashCachePath,
   resultCachePath,
   newFilesCachePath,
+  modelStatsCachePath,
 } from "./config.mjs";
 import { scanProject, scanProjectExtensions } from "./scanner.mjs";
 import {
@@ -621,7 +622,7 @@ async function runAnalysis(config) {
           content: displayContent,
           category: cat,
         };
-        push("file_status", { file: procFile.id, status: "ok" });
+        push("file_status", { file: procFile.id, status: "ok", tokensPerSecond: result.tokensPerSecond || null });
         var resultEvent = {
           category: cat,
           file: procFile.id,
@@ -854,7 +855,7 @@ async function _executeRetry(fileId, precisionOverride) {
         appState.fileChangeTypes[fileId] = "retried";
         _retryChangeType = "retried";
       }
-      push("file_status", { file: fileId, status: "ok", changeType: _retryChangeType });
+      push("file_status", { file: fileId, status: "ok", changeType: _retryChangeType, tokensPerSecond: result.tokensPerSecond || null });
 
       upsertResult(cat, fileId, result.content);
       upsertResultEvent(cat, fileId, result.content, config.model, effectiveConfig.precision);
@@ -1193,9 +1194,46 @@ export function startServer() {
         return;
       }
 
+      // ── API: Model stats (tok/s) — persisted in ~/.repodna ──
+      if (url.pathname === "/api/model-stats") {
+        if (req.method === "GET") {
+          try {
+            var statsFile = modelStatsCachePath();
+            var statsData = existsSync(statsFile) ? JSON.parse(readFileSync(statsFile, "utf-8")) : {};
+            jsonOut(statsData);
+          } catch { jsonOut({}); }
+          return;
+        }
+        if (req.method === "POST") {
+          try {
+            var statsBody = await getBody();
+            writeFileSync(modelStatsCachePath(), JSON.stringify(statsBody));
+          } catch {}
+          jsonOut({ ok: true });
+          return;
+        }
+      }
+
       // ── API: Browse folder (native OS folder picker) ──────
       if (url.pathname === "/api/browse-folder" && req.method === "POST") {
         var picked = null;
+        var browseChild = null;
+        var clientGone = false;
+
+        req.on("close", function () {
+          clientGone = true;
+          if (browseChild) { try { browseChild.kill(); } catch (_) {} }
+        });
+
+        var execAsync = function (cmd, opts) {
+          return new Promise(function (resolve) {
+            browseChild = exec(cmd, opts, function (err, stdout) {
+              browseChild = null;
+              resolve(clientGone || err ? null : (stdout || "").trim() || null);
+            });
+          });
+        };
+
         try {
           var plt = process.platform;
           if (plt === "win32") {
@@ -1212,34 +1250,31 @@ export function startServer() {
               "if ($f.ShowDialog($o) -eq [System.Windows.Forms.DialogResult]::OK) { Write-Output $f.SelectedPath }",
               "$o.Dispose()"
             ].join("; ");
-            picked = execSync(
+            picked = await execAsync(
               "powershell -NoProfile -NonInteractive -Command \"" + psCmd.replace(/"/g, '\\"') + "\"",
               { encoding: "utf8", timeout: 120000 }
-            ).trim() || null;
+            );
           } else if (plt === "darwin") {
-            var raw = execSync(
+            var raw = await execAsync(
               "osascript -e 'set p to choose folder with prompt \"Select project folder\"' -e 'POSIX path of p'",
               { encoding: "utf8", timeout: 120000 }
-            ).trim();
-            picked = raw.replace(/\/$/, "") || null;
+            );
+            picked = raw ? raw.replace(/\/$/, "") || null : null;
           } else {
             // Linux: try zenity then kdialog
-            try {
-              picked = execSync(
-                "zenity --file-selection --directory --title='Select project folder'",
+            picked = await execAsync(
+              "zenity --file-selection --directory --title='Select project folder'",
+              { encoding: "utf8", timeout: 120000 }
+            );
+            if (!picked) {
+              picked = await execAsync(
+                "kdialog --getexistingdirectory / --title 'Select project folder'",
                 { encoding: "utf8", timeout: 120000 }
-              ).trim() || null;
-            } catch (_) {
-              try {
-                picked = execSync(
-                  "kdialog --getexistingdirectory / --title 'Select project folder'",
-                  { encoding: "utf8", timeout: 120000 }
-                ).trim() || null;
-              } catch (_2) { picked = null; }
+              );
             }
           }
         } catch (e) { picked = null; }
-        jsonOut({ ok: !!picked, path: picked });
+        if (!clientGone) jsonOut({ ok: !!picked, path: picked });
         return;
       }
 

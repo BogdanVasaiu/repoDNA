@@ -185,3 +185,8 @@ export function newFilesCachePath(projectPath) {
   const dir = ensureProjectDataDir(projectPath);
   return join(dir, "new-files.json");
 }
+
+export function modelStatsCachePath() {
+  ensureGlobalDir();
+  return join(GLOBAL_CONFIG_DIR, "model_stats.json");
+}

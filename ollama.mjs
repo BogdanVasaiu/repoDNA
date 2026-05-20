@@ -375,16 +375,35 @@ export async function analyzeFileWithOllama(
     raw = raw.replace(/(\*\*[^*\n]+\*\*:)\s*\[none\]/gi, "$1 none");
     raw = detectAndFixLoop(raw);
     raw = capListSection(raw, maxListItems);
-    // Models sometimes drop the file header when no project description is given.
-    // Always guarantee the ### `path` line is present so the builder gets a title.
-    if (!raw.startsWith("### `")) {
-      raw = "### `" + rel + "`\n" + raw;
-    }
+    // Normalize field labels to bold — two patterns weaker models produce:
+    // 1. Heading style:  "### Architecture:" or "#### Watch out:"
+    // 2. Plain text:     "Architecture:"  (standalone line, no bold markers)
+    // Both create structural noise; normalize to "**Field:**".
+    var _fields = "Role|Key exports?|Exports?|Non-obvious deps?|Watch out|Side effects?|Architecture";
+    raw = raw.replace(
+      new RegExp("^#{2,4}[ \\t]+(" + _fields + ")[ \\t]*:?\\**[ \\t]*$", "gim"),
+      function (_, f) { return "**" + f + ":**"; }
+    );
+    raw = raw.replace(
+      new RegExp("^(" + _fields + ")\\s*:\\s*$", "gim"),
+      function (_, f) { return "**" + f + ":**"; }
+    );
+    // Always emit the canonical ### `rel` header.
+    // Weaker models often include their own ### line with no backticks or wrong path
+    // separators (forward slash on Windows), so startsWith("### `") silently failed
+    // and produced a duplicate. Strip any leading ### line unconditionally, then
+    // re-emit ours in the correct form.
+    // Strip any trailing horizontal rule the model appends — the builder adds its
+    // own --- separator between entries, so a trailing one creates a double ---
+    raw = raw.replace(/(\n\s*---+\s*)+$/, "").trimEnd();
+    raw = raw.replace(/^###[ \t]+[^\n]*\n?/, "").trimStart();
+    raw = "### `" + rel + "`\n" + raw;
     return raw;
   }
 
   // ─── ATTEMPT 1: Native Ollama API ───────────────────────
   try {
+    var t1 = Date.now();
     var res = await fetch(config.ollamaHost + "/api/chat", {
       method: "POST",
       signal: signal,
@@ -412,7 +431,16 @@ export async function analyzeFileWithOllama(
       var text =
         data.message && data.message.content ? data.message.content.trim() : "";
       text = postProcess(text);
-      if (text) return { content: text, error: null };
+      var tokensPerSecond = null;
+      if (data.eval_count > 0 && data.eval_duration > 0) {
+        // Prefer Ollama's internal nanosecond timer — excludes all overhead
+        tokensPerSecond = Math.round(data.eval_count / (data.eval_duration / 1e9));
+      } else if (data.eval_count > 0) {
+        // Cloud models: Ollama omits eval_duration, fall back to wall-clock
+        var wallSec1 = (Date.now() - t1) / 1000;
+        if (wallSec1 > 0) tokensPerSecond = Math.round(data.eval_count / wallSec1);
+      }
+      if (text) return { content: text, error: null, tokensPerSecond };
       console.log("[ollama] Native API returned empty, trying OpenAI endpoint…");
     }
   } catch (e) {
@@ -424,6 +452,7 @@ export async function analyzeFileWithOllama(
 
   // ─── ATTEMPT 2: OpenAI-compatible endpoint ───────────────
   try {
+    var t2 = Date.now();
     var res2 = await fetch(config.ollamaHost + "/v1/chat/completions", {
       method: "POST",
       signal: signal,
@@ -470,7 +499,15 @@ export async function analyzeFileWithOllama(
       };
     }
 
-    return { content: text2, error: null };
+    // Estimate tok/s from usage tokens + wall-clock (OpenAI endpoint has no timing fields)
+    var tokensPerSecond2 = null;
+    if (data2.usage) {
+      var totalToks = (data2.usage.completion_tokens || 0) + (data2.usage.prompt_tokens || 0);
+      var wallSec2 = (Date.now() - t2) / 1000;
+      if (totalToks > 0 && wallSec2 > 0) tokensPerSecond2 = Math.round(totalToks / wallSec2);
+    }
+
+    return { content: text2, error: null, tokensPerSecond: tokensPerSecond2 };
   } catch (e) {
     if (e.name === "AbortError") throw e;
     return { content: null, error: "Ollama request failed: " + e.message };

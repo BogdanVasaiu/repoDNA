@@ -308,7 +308,7 @@ select.input { cursor: pointer; }
 /* ── PROJECT ITEMS ───────────────────────────────────────── */
 .project-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 9px 12px;
+  padding: 5px 12px;
   border: 1px solid rgba(255,255,255,.06);
   border-left: 3px solid transparent;
   border-radius: var(--r); margin-bottom: 6px;
@@ -1422,7 +1422,7 @@ select.input { cursor: pointer; }
 }
 .install-card-icon {
   display: flex; align-items: center; justify-content: center;
-  width: 26px; height: 26px; border-radius: 6px; flex-shrink: 0;
+  width: 30px; height: 30px; border-radius: 6px; flex-shrink: 0;
   background: rgba(239,68,68,0.12);
   border: 1px solid rgba(239,68,68,0.28);
 }
@@ -1442,10 +1442,10 @@ select.input { cursor: pointer; }
 }
 .install-method-label { display: none; }
 .install-cmd-block {
-  background: #0d1117;
+  background: var(--s3);
   border: 1px solid rgba(255,255,255,.07);
   border-radius: var(--r-sm);
-  padding: 13px 16px;
+  padding: 8px 16px;
   display: flex; flex-direction: column;
 }
 .install-cmd-row { display: flex; align-items: center; gap: 10px; }
@@ -1631,7 +1631,7 @@ select.input { cursor: pointer; }
 }
 .imodel-hdr-name { flex: 1; font-size: 10px; font-weight: 600; color: var(--t4); text-transform: uppercase; letter-spacing: .06em; }
 .imodel-hdr-size { font-size: 10px; font-weight: 600; color: var(--t4); text-transform: uppercase; letter-spacing: .06em; min-width: 42px; text-align: right; }
-.imodel-hdr-speed { font-size: 10px; font-weight: 600; color: var(--t4); text-transform: uppercase; letter-spacing: .06em; min-width: 60px; text-align: right; }
+.imodel-hdr-speed { font-size: 10px; font-weight: 600; color: var(--t4); text-transform: uppercase; letter-spacing: .06em; min-width: 60px; text-align: right; margin-left: 12px; }
 .imodels-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
 .imodel-row {
   display: flex; align-items: center; gap: 10px;
@@ -1643,7 +1643,7 @@ select.input { cursor: pointer; }
 .imodel-type-icon { flex-shrink: 0; display: flex; align-items: center; opacity: .5; color: var(--t3); }
 .imodel-name { flex: 1; font-family: var(--mono); font-size: 12px; color: var(--t1); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .imodel-vram { font-size: 11px; color: var(--t3); min-width: 42px; text-align: right; white-space: nowrap; }
-.imodel-speed { font-size: 11px; color: var(--t4); min-width: 60px; text-align: right; white-space: nowrap; font-family: var(--mono); }
+.imodel-speed { font-size: 11px; color: var(--t4); min-width: 60px; text-align: right; white-space: nowrap; font-family: var(--mono); margin-left: 12px; }
 .imodel-add-btn { margin-top: 2px; }
 
 /* Reusable attention animation for CTA buttons that need to be noticed */
