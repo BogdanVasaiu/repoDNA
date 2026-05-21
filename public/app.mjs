@@ -2128,6 +2128,13 @@ function renderTree() {
   if (Object.keys(expanded).length > 0) applyExpandedState(expanded);
   applyTreeHighlights();
   applyTreeFilters();
+  updateExpandToggleLabel();
+}
+function updateExpandToggleLabel() {
+  var btn = document.getElementById("btn-toggle-expand");
+  if (!btn) return;
+  var anyCollapsed = !!document.querySelector("#file-tree .tree-children.collapsed");
+  btn.textContent = anyCollapsed ? "⊞ Expand all" : "⊟ Collapse all";
 }
 
 function createTreeNode(node, depth, isLast, lineage) {
@@ -2405,6 +2412,22 @@ window._includeAllFiles = function () {
   });
   renderTree(); renderCategoryChips(); refreshFileCount(); renderSummary(); saveCurrentProjectSettings();
 };
+window._toggleExpandAll = function (btn) {
+  var anyCollapsed = !!document.querySelector("#file-tree .tree-children.collapsed");
+  var expand = anyCollapsed; // if anything is collapsed, expand; otherwise collapse
+  document.querySelectorAll("#file-tree .tree-children").forEach(function (cc) {
+    if (expand) cc.classList.remove("collapsed");
+    else cc.classList.add("collapsed");
+  });
+  document.querySelectorAll("#file-tree .tree-node").forEach(function (node) {
+    var children = node.querySelector(":scope > .tree-children");
+    if (!children) return;
+    var toggle = node.querySelector(":scope > .tree-row .tree-toggle");
+    if (!toggle) return;
+    toggle.textContent = children.classList.contains("collapsed") ? "▸" : "▾";
+  });
+  if (btn) btn.textContent = expand ? "⊟ Collapse all" : "⊞ Expand all";
+};
 window._excludeAllFiles = function () {
   S.flatNodes.forEach(function (n) {
     if (n.type === "file") S.userOverrides.set(n.id, "excluded");
@@ -2432,6 +2455,7 @@ function renderCategoryChips() {
     styles: { icon: "🎨", label: "CSS Styles" },
     templates: { icon: "🖼️", label: "Templates" },
     "data-schema": { icon: "🗄️", label: "Data Schema" },
+    notebooks: { icon: "📓", label: "Notebooks" },
     scripts: { icon: "📜", label: "Scripts" },
     images: { icon: "🖼️", label: "Images" },
     svg: { icon: "✏️", label: "SVG" },
@@ -2441,17 +2465,25 @@ function renderCategoryChips() {
     locks: { icon: "🔒", label: "Lock files" },
     generated: { icon: "⚙️", label: "Generated" },
     logs: { icon: "📋", label: "Logs" },
+    certs: { icon: "🔐", label: "Certificates" },
     unknown: { icon: "❓", label: "Other" },
   };
   var entries = Object.entries(catTotal)
     .filter(function (e) { return e[1] > 0; })
     .sort(function (a, b) { return b[1] - a[1]; });
-  var bulkMenuHtml =
-    '<button class="cat-und-trigger" type="button" title="Bulk actions" aria-label="Bulk actions">⋯</button>' +
-    '<div class="cat-und-btns">' +
-    '<button class="cat-und-btn cat-und-inc" data-und-action="include">☑ all</button>' +
-    '<button class="cat-und-btn cat-und-exc" data-und-action="exclude">☐ all</button>' +
-    '</div>';
+  function makeBulkMenuHtml(cat) {
+    var extra = cat === "__unknown__"
+      ? '<button class="cat-und-btn cat-und-table" data-und-action="table" title="Open the resolve table">📋 Table</button>'
+      : '';
+    return (
+      '<button class="cat-und-trigger" type="button" title="Bulk actions" aria-label="Bulk actions">⋯</button>' +
+      '<div class="cat-und-btns">' +
+      '<button class="cat-und-btn cat-und-inc" data-und-action="include">☑ all</button>' +
+      '<button class="cat-und-btn cat-und-exc" data-und-action="exclude">☐ all</button>' +
+      extra +
+      '</div>'
+    );
+  }
   var html = "";
   // "New" chip — files created in the last smart update
   var newCount = 0;
@@ -2465,7 +2497,7 @@ function renderCategoryChips() {
       '<div class="cat-icon-col"><span class="cat-icon">✨</span><span class="cat-count">' + newCount + '</span></div>' +
       '<div class="cat-right"><span class="cat-name cat-new-name">New</span>' +
       '<div class="cat-bar-wrap"><div class="cat-bar cat-new-bar"><div class="cat-bar-fill cat-new-bar-fill" style="width:100%"></div></div></div>' +
-      '</div>' + bulkMenuHtml + '</div>';
+      '</div>' + makeBulkMenuHtml("__new__") + '</div>';
   }
   if (undecidedCount > 0) {
     var undSel = S.selectedCategories.has("__unknown__");
@@ -2473,7 +2505,7 @@ function renderCategoryChips() {
       '<div class="cat-item cat-undecided' + (undSel ? " cat-selected" : "") + '" data-cat="__unknown__">' +
       '<div class="cat-icon-col"><span class="cat-icon">⚠️</span><span class="cat-count">' + undecidedCount + '</span></div>' +
       '<div class="cat-right"><span class="cat-name">Unknown</span></div>' +
-      bulkMenuHtml +
+      makeBulkMenuHtml("__unknown__") +
       '</div>';
   }
   html += entries.map(function (entry) {
@@ -2487,7 +2519,7 @@ function renderCategoryChips() {
       '<div class="cat-icon-col"><span class="cat-icon">' + info.icon + '</span><span class="cat-count">' + total + '</span></div>' +
       '<div class="cat-right"><span class="cat-name">' + info.label + '</span>' +
       '<div class="cat-bar-wrap"><div class="cat-bar"><div class="cat-bar-fill" style="width:' + pct + '%"></div></div></div>' +
-      '</div>' + bulkMenuHtml + '</div>'
+      '</div>' + makeBulkMenuHtml(cat) + '</div>'
     );
   }).join("");
   container.innerHTML = html;
@@ -2526,6 +2558,11 @@ function renderCategoryChips() {
       var item = btn.closest(".cat-item");
       var cat = item ? item.dataset.cat : null;
       var action = btn.dataset.undAction;
+      if (action === "table") {
+        if (item) closeCatMenu(item);
+        window._openResolveTable();
+        return;
+      }
       var target = action === "include" ? "included" : "excluded";
       S.flatNodes.forEach(function (n) {
         if (n.type !== "file") return;
@@ -2603,7 +2640,11 @@ function applyTreeFilters() {
   var active = q.length > 0 || S.treeFilter !== "all";
 
   function ownMatches(nd) {
-    if (q && !nd.name.toLowerCase().includes(q)) return false;
+    if (q) {
+      var name = nd.name.toLowerCase();
+      var path = (nd.id || "").toLowerCase();
+      if (!name.includes(q) && !path.includes(q)) return false;
+    }
     if (nd.type === "directory") {
       // Directories don't have a meaningful status filter — let descendants decide.
       return S.treeFilter === "all";
@@ -2893,6 +2934,7 @@ function renderAdvContent() {
       }
       renderAdvContent();
       rescanWithRules();
+      saveCurrentProjectSettings();
     });
   });
 
@@ -2926,6 +2968,7 @@ function renderAdvContent() {
       ai.value = "";
       renderAdvContent();
       rescanWithRules();
+      saveCurrentProjectSettings();
     }
     ab.addEventListener("click", _doAdd);
     ai.addEventListener("keydown", function(e){ if (e.key === "Enter") _doAdd(); });
@@ -2948,14 +2991,11 @@ async function rescanWithRules() {
       S.projectType = d.projectType;
       S.newFileIds = new Set(d.newFileIds || []);
       flattenNodes(S.treeData, "");
-      var vid = new Set(
-        S.flatNodes.map(function (n) {
-          return n.id;
-        }),
-      );
-      for (var _id of S.userOverrides.keys()) {
-        if (!vid.has(_id)) S.userOverrides.delete(_id);
-      }
+      // NOTE: we used to delete userOverrides whose IDs were missing from the new flatNodes.
+      // That breaks the apply/undo cycle: a folder-exclude rule hides its descendants from
+      // flatNodes, so any user decisions on them got wiped — then undoing the rule could not
+      // restore them. We now keep stale overrides; they're harmless (only consulted when the
+      // matching node is back in flatNodes) and the server reconciles on run start.
       renderTree();
       renderCategoryChips();
       refreshFileCount();
@@ -3163,10 +3203,9 @@ window._page2Continue = function () {
       '</div>' +
       '<div class="modal-foot unk-modal-foot">' +
         '<button class="btn btn-sm btn-ghost" id="unk-btn-review">🔍 Review in tree</button>' +
+        '<button class="btn btn-sm btn-ghost" id="unk-btn-table">📋 Review in table</button>' +
         '<div class="unk-spacer"></div>' +
         '<button class="btn btn-sm btn-ghost" id="unk-btn-skip">Skip →</button>' +
-        '<button class="btn btn-sm btn-danger" id="unk-btn-exc">☐ Exclude all</button>' +
-        '<button class="btn btn-sm btn-primary" id="unk-btn-inc">☑ Include all</button>' +
       '</div>' +
     '</div>';
   document.body.appendChild(overlay);
@@ -3178,30 +3217,496 @@ window._page2Continue = function () {
   overlay.addEventListener("click", function (e) { if (e.target === overlay) closeModal(); });
   document.getElementById("unk-close-x").addEventListener("click", closeModal);
 
-  document.getElementById("unk-btn-inc").addEventListener("click", function () {
-    unresolved.forEach(function (n) { S.userOverrides.set(n.id, "included"); });
-    renderTree(); renderCategoryChips(); refreshFileCount(); renderSummary();
-    saveCurrentProjectSettings();
-    closeModal();
-    window._goToPage(3);
-  });
-  document.getElementById("unk-btn-exc").addEventListener("click", function () {
-    unresolved.forEach(function (n) { S.userOverrides.set(n.id, "excluded"); });
-    renderTree(); renderCategoryChips(); refreshFileCount(); renderSummary();
-    saveCurrentProjectSettings();
-    closeModal();
-    window._goToPage(3);
-  });
   document.getElementById("unk-btn-review").addEventListener("click", function () {
     closeModal();
     S.selectedCategories.add("__unknown__");
     renderCategoryChips();
     applyTreeHighlights();
   });
+  document.getElementById("unk-btn-table").addEventListener("click", function () {
+    closeModal();
+    window._openResolveTable();
+  });
   document.getElementById("unk-btn-skip").addEventListener("click", function () {
     closeModal();
     window._goToPage(3);
   });
+};
+
+// ═══════════════════════════════════════════════════════════
+// RESOLVE TABLE — flat list of undecided files with per-row buttons
+// ═══════════════════════════════════════════════════════════
+window._openResolveTable = function () {
+  function computeAmbig() {
+    var arr = S.flatNodes.filter(function (n) {
+      return n.type === "file" && n.autoStatus === "ambiguous" && !S.userOverrides.has(n.id);
+    });
+    arr.sort(function (a, b) { return a.id.localeCompare(b.id); });
+    return arr;
+  }
+
+  // Folder index built once per tree state. Cached at modal scope; invalidated on rescan.
+  // Holds:
+  //   totals[folder]      — count of files (any status) whose path contains folder
+  //   placeCount[folder]  — count of distinct parent-path locations the folder name appears in
+  var folderIndex = null;
+
+  function buildFolderIndex() {
+    var totals = {};
+    var places = {};
+    var nodes = S.flatNodes;
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      if (n.type !== "file") continue;
+      var parts = n.id.split("/");
+      var lim = parts.length - 1;
+      var seen = null;
+      var prefix = "";
+      for (var j = 0; j < lim; j++) {
+        var f = parts[j];
+        if (f) {
+          if (!seen) seen = {};
+          if (!seen[f]) {
+            seen[f] = 1;
+            totals[f] = (totals[f] || 0) + 1;
+            if (!places[f]) places[f] = {};
+            places[f][prefix] = 1;
+          }
+        }
+        prefix = prefix ? prefix + "/" + f : f;
+      }
+    }
+    var placeCount = {};
+    var ks = Object.keys(places);
+    for (var k = 0; k < ks.length; k++) placeCount[ks[k]] = Object.keys(places[ks[k]]).length;
+    return { totals: totals, placeCount: placeCount };
+  }
+
+  function computeSuggestions(files) {
+    if (!folderIndex) folderIndex = buildFolderIndex();
+    var byExt = {};
+    var byFolder = {};
+    for (var i = 0; i < files.length; i++) {
+      var n = files[i];
+      var ext = (n.extension || "").toLowerCase();
+      if (ext) byExt[ext] = (byExt[ext] || 0) + 1;
+      var parts = n.id.split("/");
+      var lim = parts.length - 1;
+      var seen = null;
+      for (var j = 0; j < lim; j++) {
+        var f = parts[j];
+        if (!f) continue;
+        if (seen && seen[f]) continue;
+        if (!seen) seen = {};
+        seen[f] = 1;
+        byFolder[f] = (byFolder[f] || 0) + 1;
+      }
+    }
+    var PURITY = 0.9;
+    var MIN_FOLDER = 3;
+    var out = [];
+    var extKeys = Object.keys(byExt);
+    for (var k = 0; k < extKeys.length; k++) {
+      var e = extKeys[k];
+      if (byExt[e] >= 2) {
+        out.push({ type: "extension", key: e, label: "." + e, count: byExt[e], places: 0 });
+      }
+    }
+    var folderKeys = Object.keys(byFolder);
+    for (var m = 0; m < folderKeys.length; m++) {
+      var f2 = folderKeys[m];
+      var ac = byFolder[f2];
+      if (ac < MIN_FOLDER) continue;
+      var tc = folderIndex.totals[f2] || ac;
+      if (ac / tc < PURITY) continue;
+      out.push({
+        type: "folder", key: f2, label: f2 + "/",
+        count: ac, purity: ac / tc,
+        places: folderIndex.placeCount[f2] || 1,
+      });
+    }
+    out.sort(function (a, b) {
+      if (a.type !== b.type) return a.type === "extension" ? -1 : 1;
+      return b.count - a.count;
+    });
+    return out.slice(0, 8);
+  }
+
+  var ambig = computeAmbig();
+  // Immutable list of IDs that were undecided when the modal opened. Reset uses this
+  // to clear every per-file decision the user made, regardless of whether the file is
+  // still in the current `ambig` array (rule applications shrink `ambig`).
+  var originalAmbigIds = ambig.map(function (n) { return n.id; });
+  // Rules applied during THIS modal session. Each entry: {type, key, action, count, label, ruleKey}
+  // Kept so the strip can show them with an "undo" affordance even after the underlying
+  // files have been reclassified out of the ambig snapshot.
+  var appliedRules = [];
+  // Serialize rescans: concurrent fetches return out of order and corrupt the tree state.
+  var rescanBusy = false;
+
+  if (!ambig.length) {
+    showSnack("No undecided files left.", "info", 2500);
+    return;
+  }
+
+  var existing = document.getElementById("resolve-table-overlay");
+  if (existing) existing.remove();
+
+  var overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "resolve-table-overlay";
+  overlay.innerHTML =
+    '<div class="modal rt-modal">' +
+      '<div class="modal-head">' +
+        '<span>📋 Resolve undecided files <span class="rt-count-info"><b id="rt-remaining">0</b> remaining of <span id="rt-total">0</span></span></span>' +
+      '</div>' +
+      '<div class="rt-suggest" id="rt-suggest"></div>' +
+      '<div class="rt-toolbar">' +
+        '<input class="rt-search" id="rt-search" placeholder="Filter by name or extension…" spellcheck="false">' +
+        '<button class="btn btn-sm btn-ghost" id="rt-inc-all">☑ all</button>' +
+        '<button class="btn btn-sm btn-ghost" id="rt-exc-all">☐ all</button>' +
+      '</div>' +
+      '<div class="rt-list" id="rt-list"></div>' +
+      '<div class="modal-foot">' +
+        '<button class="btn btn-sm btn-ghost" id="rt-reset-all" title="Undo every rule and per-file decision from this session">↺ Reset</button>' +
+        '<div class="unk-spacer"></div>' +
+        '<button class="btn btn-sm btn-ghost" id="rt-cancel" title="Discard all changes made in this modal and close">Cancel</button>' +
+        '<button class="btn btn-sm btn-primary" id="rt-done">Apply</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  function renderSuggestions() {
+    var sEl = document.getElementById("rt-suggest");
+    if (!sEl) return;
+    var available = computeSuggestions(ambig);
+    if (!available.length && !appliedRules.length) {
+      sEl.style.display = "none";
+      sEl.innerHTML = "";
+      return;
+    }
+    sEl.style.display = "";
+    // Preserve the collapsed state across re-renders.
+    var wasCollapsed = sEl.classList.contains("rt-suggest-collapsed");
+    var totalCount = available.length + appliedRules.length;
+    function placesLabel(s) {
+      return (s.places && s.places > 1)
+        ? '<span class="rt-suggest-places" title="This folder name appears in ' + s.places + ' places in your project">· ' + s.places + ' places</span>'
+        : '';
+    }
+    var appliedHtml = appliedRules.map(function (a) {
+      var cls = a.action === "exclude" ? "rt-applied-exc" : "rt-applied-inc";
+      var icon = a.action === "exclude" ? "—" : "✓";
+      var verb = a.action === "exclude" ? "excluded" : "included";
+      return (
+        '<div class="rt-suggest-item rt-applied ' + cls + '" data-type="' + escHtml(a.type) + '" data-key="' + escHtml(a.key) + '">' +
+        '<span class="rt-suggest-pattern">' + (a.type === "folder" ? "📁 " : "") + escHtml(a.label) + '</span>' +
+        '<span class="rt-applied-status">' + icon + ' ' + verb + ' (' + a.count + ')</span>' +
+        '<button class="rt-suggest-btn rt-suggest-undo" data-act="undo" title="Remove this rule">↺ undo</button>' +
+        '</div>'
+      );
+    }).join("");
+    var availableHtml = available.map(function (s) {
+      return (
+        '<div class="rt-suggest-item" data-type="' + s.type + '" data-key="' + escHtml(s.key) + '">' +
+        '<span class="rt-suggest-pattern">' + (s.type === "folder" ? "📁 " : "") + escHtml(s.label) + '</span>' +
+        '<span class="rt-suggest-count">' + s.count + '</span>' +
+        placesLabel(s) +
+        '<button class="rt-suggest-btn rt-suggest-exc" data-act="exclude" title="Add rule: exclude all of these">+ exclude</button>' +
+        '<button class="rt-suggest-btn rt-suggest-inc" data-act="include" title="Add rule: include all of these">+ include</button>' +
+        '</div>'
+      );
+    }).join("");
+    sEl.innerHTML =
+      '<div class="rt-suggest-head">' +
+        '<div class="rt-suggest-label">Suggested rules ' +
+          '<span class="rt-suggest-count-total">' + totalCount + '</span>' +
+        '</div>' +
+        '<button class="rt-suggest-toggle" id="rt-suggest-toggle" title="Hide/show">' +
+          (wasCollapsed ? "▸" : "▾") +
+        '</button>' +
+      '</div>' +
+      '<div class="rt-suggest-list">' + appliedHtml + availableHtml + '</div>';
+    if (wasCollapsed) sEl.classList.add("rt-suggest-collapsed");
+    sEl.querySelectorAll(".rt-suggest-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var item = btn.closest(".rt-suggest-item");
+        if (!item) return;
+        var act = btn.dataset.act;
+        if (act === "undo") undoRule(item.dataset.type, item.dataset.key);
+        else applyRule(item.dataset.type, item.dataset.key, act);
+      });
+    });
+    var tog = document.getElementById("rt-suggest-toggle");
+    if (tog) tog.addEventListener("click", function () {
+      var nowCollapsed = sEl.classList.toggle("rt-suggest-collapsed");
+      tog.textContent = nowCollapsed ? "▸" : "▾";
+    });
+  }
+
+  function setBusy(b) {
+    rescanBusy = b;
+    var sEl = document.getElementById("rt-suggest");
+    var modal = document.querySelector(".rt-modal");
+    if (sEl) sEl.style.opacity = b ? ".5" : "";
+    if (modal) modal.classList.toggle("rt-busy", b);
+  }
+
+  async function applyRule(type, key, action) {
+    if (rescanBusy) return;
+    var ruleKey;
+    if (type === "extension") {
+      ruleKey = action === "exclude" ? "excludedExtensions" : "includedExtensions";
+    } else {
+      ruleKey = action === "exclude" ? "excludedFolders" : "includedFolders";
+    }
+    if (!S.customRules[ruleKey]) S.customRules[ruleKey] = [];
+    if (S.customRules[ruleKey].includes(key)) return; // already applied
+    S.customRules[ruleKey].push(key);
+    var prevCount = ambig.length;
+    setBusy(true);
+    try {
+      await rescanWithRules();
+      folderIndex = null;
+      ambig = computeAmbig();
+      var resolved = prevCount - ambig.length;
+      appliedRules.push({
+        type: type,
+        key: key,
+        action: action,
+        count: resolved,
+        label: type === "extension" ? "." + key : key + "/",
+        ruleKey: ruleKey,
+      });
+      renderSuggestions();
+      renderList();
+      try { renderAdvContent(); } catch {}
+    } catch (err) {
+      showSnack("Could not apply rule", "warn", 3000);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function undoRule(type, key) {
+    if (rescanBusy) return;
+    var idx = -1;
+    for (var i = 0; i < appliedRules.length; i++) {
+      if (appliedRules[i].type === type && appliedRules[i].key === key) { idx = i; break; }
+    }
+    if (idx === -1) return;
+    var rule = appliedRules[idx];
+    setBusy(true);
+    try {
+      S.customRules[rule.ruleKey] = (S.customRules[rule.ruleKey] || []).filter(function (k) {
+        return k !== rule.key;
+      });
+      await rescanWithRules();
+      folderIndex = null;
+      ambig = computeAmbig();
+      appliedRules.splice(idx, 1);
+      renderSuggestions();
+      renderList();
+      try { renderAdvContent(); } catch {}
+    } catch (err) {
+      showSnack("Could not undo", "warn", 3000);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resetSession() {
+    if (rescanBusy) return;
+    var hadRules = appliedRules.length > 0;
+    setBusy(true);
+    try {
+      // 1. Remove every session-applied rule from S.customRules.
+      for (var i = 0; i < appliedRules.length; i++) {
+        var r = appliedRules[i];
+        S.customRules[r.ruleKey] = (S.customRules[r.ruleKey] || []).filter(function (k) {
+          return k !== r.key;
+        });
+      }
+      // 2. Rescan only if a rule changed the tree state.
+      if (hadRules) {
+        await rescanWithRules();
+        folderIndex = null;
+      }
+      // 3. Clear decisions on every file that was originally undecided when the modal opened
+      //    — not just those still in the current `ambig` snapshot. This is the key fix:
+      //    rule applications shrink `ambig`, so a "reset" that only touched current-ambig
+      //    files was leaving prior per-file decisions stuck.
+      for (var k = 0; k < originalAmbigIds.length; k++) {
+        S.userOverrides.delete(originalAmbigIds[k]);
+      }
+      appliedRules.length = 0;
+      ambig = computeAmbig();
+      renderSuggestions();
+      renderList();
+      saveCurrentProjectSettings();
+      try { renderAdvContent(); } catch {}
+    } catch (err) {
+      showSnack("Could not reset", "warn", 3000);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+
+  function updateCount() {
+    var remaining = ambig.filter(function (n) { return !S.userOverrides.has(n.id); }).length;
+    var rem = document.getElementById("rt-remaining");
+    var tot = document.getElementById("rt-total");
+    if (rem) rem.textContent = remaining;
+    if (tot) tot.textContent = ambig.length;
+  }
+
+  function renderList() {
+    var listEl = document.getElementById("rt-list");
+    if (!listEl) return;
+    var q = (document.getElementById("rt-search").value || "").toLowerCase();
+    var rows = ambig.filter(function (n) {
+      if (!q) return true;
+      var name = n.name.toLowerCase();
+      var path = (n.id || "").toLowerCase();
+      var ext = (n.extension || "").toLowerCase();
+      return name.includes(q) || path.includes(q) || ext.includes(q);
+    });
+    if (!rows.length) {
+      listEl.innerHTML = '<div class="rt-empty">No files match.</div>';
+      updateCount();
+      return;
+    }
+    listEl.innerHTML = rows.map(function (n) {
+      var decision = S.userOverrides.get(n.id) || null;
+      var ext = n.extension ? "." + n.extension : "—";
+      var size = n.size ? formatSize(n.size) : "";
+      var actions;
+      if (decision === "included") {
+        actions =
+          '<span class="rt-row-status rt-status-inc">✓ Selected</span>' +
+          '<button class="rt-btn rt-btn-undo" data-id="' + escHtml(n.id) + '" data-action="undo">undo</button>';
+      } else if (decision === "excluded") {
+        actions =
+          '<span class="rt-row-status rt-status-exc">— Unselected</span>' +
+          '<button class="rt-btn rt-btn-undo" data-id="' + escHtml(n.id) + '" data-action="undo">undo</button>';
+      } else {
+        actions =
+          '<button class="rt-btn rt-btn-inc" data-id="' + escHtml(n.id) + '" data-action="include" title="Select">✓</button>' +
+          '<button class="rt-btn rt-btn-exc" data-id="' + escHtml(n.id) + '" data-action="exclude" title="Unselect">✗</button>';
+      }
+      return (
+        '<div class="rt-row' + (decision ? " rt-row-done" : "") + '">' +
+          '<div class="rt-row-info">' +
+            '<span class="rt-row-ext">' + escHtml(ext) + '</span>' +
+            '<span class="rt-row-name" title="' + escHtml(n.id) + '">' + escHtml(n.id) + '</span>' +
+            '<span class="rt-row-size">' + escHtml(size) + '</span>' +
+          '</div>' +
+          '<div class="rt-row-actions">' + actions + '</div>' +
+        '</div>'
+      );
+    }).join("");
+    updateCount();
+  }
+
+  function close() {
+    var el = document.getElementById("resolve-table-overlay");
+    if (el) el.remove();
+    renderTree();
+    renderCategoryChips();
+    refreshFileCount();
+    renderSummary();
+    saveCurrentProjectSettings();
+  }
+
+  // Discard every in-modal change — applied rules and per-file decisions — and close
+  // WITHOUT persisting. We deliberately skip saveCurrentProjectSettings.
+  async function cancelSession() {
+    if (rescanBusy) {
+      // Wait for the in-flight rescan, otherwise reverting customRules mid-fetch leaves
+      // S.flatNodes out of sync with the current rule set.
+      return;
+    }
+    var hadRules = appliedRules.length > 0;
+    if (hadRules || originalAmbigIds.length) setBusy(true);
+    try {
+      // 1. Undo any rules added in this session.
+      for (var i = 0; i < appliedRules.length; i++) {
+        var r = appliedRules[i];
+        S.customRules[r.ruleKey] = (S.customRules[r.ruleKey] || []).filter(function (k) {
+          return k !== r.key;
+        });
+      }
+      // 2. Rescan only if a rule changed the tree state.
+      if (hadRules) {
+        await rescanWithRules();
+        folderIndex = null;
+      }
+      // 3. Roll back per-file decisions on files that were originally undecided.
+      for (var k = 0; k < originalAmbigIds.length; k++) {
+        S.userOverrides.delete(originalAmbigIds[k]);
+      }
+      appliedRules.length = 0;
+    } catch (err) {
+      // Best-effort revert. Still close the modal so the user isn't trapped.
+    } finally {
+      setBusy(false);
+    }
+    // Close without persisting.
+    var el = document.getElementById("resolve-table-overlay");
+    if (el) el.remove();
+    renderTree();
+    renderCategoryChips();
+    refreshFileCount();
+    renderSummary();
+    try { renderAdvContent(); } catch {}
+  }
+
+  document.getElementById("rt-list").addEventListener("click", function (e) {
+    var btn = e.target.closest(".rt-btn");
+    if (!btn) return;
+    var id = btn.dataset.id;
+    var action = btn.dataset.action;
+    if (action === "include") S.userOverrides.set(id, "included");
+    else if (action === "exclude") S.userOverrides.set(id, "excluded");
+    else if (action === "undo") S.userOverrides.delete(id);
+    renderList();
+  });
+  document.getElementById("rt-search").addEventListener("input", renderList);
+  document.getElementById("rt-inc-all").addEventListener("click", function () {
+    ambig.forEach(function (n) { S.userOverrides.set(n.id, "included"); });
+    renderList();
+  });
+  document.getElementById("rt-exc-all").addEventListener("click", function () {
+    ambig.forEach(function (n) { S.userOverrides.set(n.id, "excluded"); });
+    renderList();
+  });
+  document.getElementById("rt-reset-all").addEventListener("click", function () {
+    resetSession();
+  });
+  // Intentionally NOT closing on outside-click — accidental backdrop clicks shouldn't
+  // commit decisions or rules. Use Apply (save + close), Cancel (revert + close), or Reset.
+  document.getElementById("rt-done").addEventListener("click", close);
+  document.getElementById("rt-cancel").addEventListener("click", cancelSession);
+
+  renderSuggestions();
+  renderList();
+  // Onboarding hint: if the suggestion strip has scrollable overflow, snap to the bottom
+  // immediately, then smoothly scroll to the top. The slide reveals that the section
+  // scrolls and can be collapsed via the chevron — both non-obvious affordances.
+  requestAnimationFrame(function () {
+    var s = document.getElementById("rt-suggest");
+    if (s && s.scrollHeight > s.clientHeight + 4) {
+      s.scrollTop = s.scrollHeight;
+      setTimeout(function () {
+        s.scrollTo({ top: 0, behavior: "smooth" });
+      }, 500);
+    }
+  });
+  setTimeout(function () {
+    var s = document.getElementById("rt-search");
+    if (s) s.focus();
+  }, 0);
 };
 
 // NAVIGATION
