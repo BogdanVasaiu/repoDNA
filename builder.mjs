@@ -21,11 +21,14 @@ const CATEGORY_META = {
   types: { label: "📐 Types", title: "TypeScript Types" },
   tests: { label: "🧪 Tests", title: "Tests" },
   scripts: { label: "📜 Scripts", title: "Scripts" },
+  assets: { label: "🖼️ Assets", title: "Assets" },
   other: { label: "📄 Other", title: "Other Files" },
 };
 
 export function categorize(rel) {
   const r = rel.replace(/\\/g, "/");
+  // Images, fonts, audio and video assets get their own section regardless of folder name
+  if (/\.(svg|png|jpg|jpeg|gif|webp|ico|bmp|tiff|avif|heic|heif|raw|woff2?|ttf|eot|otf|mp4|avi|mov|mkv|webm|mp3|wav|ogg|flac|aac|m4a|opus|aiff)$/i.test(r)) return "assets";
   if (/\/(stores?|redux|zustand|mobx|jotai|recoil)\//.test(r)) return "stores";
   if (/\/components\/chat/.test(r)) return "components_chat";
   if (/\/components\/(dashboard|admin)/.test(r)) return "components_dashboards";

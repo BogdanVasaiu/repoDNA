@@ -555,7 +555,6 @@ async function runAnalysis(config) {
       deletedCount: deletedCount,
     });
     saveHashCache(hashCacheFile, hashesToSave);
-    saveNewFilesCache(_newFilesCacheFile, _newlyAddedFileIds, _allCurrentFileIds);
     updateProjectSettings(config.projectPath, {
       lastOutputFile: outputRelFile,
       agentTarget: config.agentTarget,
@@ -712,7 +711,6 @@ async function runAnalysis(config) {
 
   saveHashCache(hashCacheFile, hashesToSave);
   saveResultCache(resultCacheFile, appState.resultEvents, prevResults, presentFileIds, newHashes, allNodeIds);
-  saveNewFilesCache(_newFilesCacheFile, _newlyAddedFileIds, _allCurrentFileIds);
   var finalMd = buildClaudeMd(
     appState.results,
     config,
