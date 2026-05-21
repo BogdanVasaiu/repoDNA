@@ -231,19 +231,31 @@
           <div class="p2-main">
             <div class="card p2-tree-card">
 
+              <!-- Toolbar: search + filter pills -->
+              <div class="tree-toolbar">
+                <input class="tree-search" id="tree-search-input" placeholder="Search files…" spellcheck="false"
+                       oninput="window._treeSearch(this.value)">
+                <div class="tree-filter-group">
+                  <button class="tree-btn active" onclick="window._treeFilter('all', this)">All</button>
+                  <button class="tree-btn flt-inc" onclick="window._treeFilter('included', this)">Selected</button>
+                  <button class="tree-btn flt-exc" onclick="window._treeFilter('excluded', this)">Unselected</button>
+                  <button class="tree-btn flt-amb" onclick="window._treeFilter('ambiguous', this)">Decide</button>
+                </div>
+              </div>
+
               <!-- Legend -->
               <div class="tree-legend">
-                <span class="leg-item leg-inc"><span class="leg-dot-i">✓</span> Included</span>
-                <span class="leg-item leg-exc"><span class="leg-dot-i">—</span> Excluded</span>
+                <span class="leg-item leg-inc"><span class="leg-dot-i">✓</span> Selected</span>
+                <span class="leg-item leg-exc"><span class="leg-dot-i">—</span> Unselected</span>
                 <span class="leg-item leg-amb"><span class="leg-dot-i">?</span> Decide</span>
                 <span class="mcat-info-wrap">
                   <button class="mcat-info-btn">i</button>
-                  <span class="mcat-tooltip" style="width:270px">
-                    <strong style="color:var(--t1);display:block;margin-bottom:5px">How rules work</strong>
-                    <strong style="color:var(--a)">✓ Included</strong> — selected for analysis (auto or manually).<br>
-                    <strong style="color:var(--t3)">— Excluded</strong> — locked by a rule. Remove it in <em>Custom Rules</em> to unlock.<br>
-                    <strong style="color:var(--amb)">? Decide</strong> — unknown file. Click once to include, again to exclude, third click to reset.<br><br>
-                    Use the folder checkbox to select or deselect all files inside a folder at once.
+                  <span class="mcat-tooltip" style="width:280px">
+                    <strong style="color:var(--t1);display:block;margin-bottom:5px">What the states mean</strong>
+                    <strong style="color:var(--a)">✓ Selected</strong> — included in the analysis (by rule or your choice).<br>
+                    <strong style="color:var(--t3)">— Unselected</strong> — left out (by rule or your choice). Click to force-include; hover the badge for the rule's reason.<br>
+                    <strong style="color:var(--amb)">? Decide</strong> — unknown file. Click once to select, again to unselect, third click to reset.<br><br>
+                    Use the folder checkbox to select or unselect all files inside it at once.
                   </span>
                 </span>
                 <span class="leg-sep"></span>

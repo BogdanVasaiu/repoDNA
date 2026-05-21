@@ -2127,6 +2127,7 @@ function renderTree() {
   }
   if (Object.keys(expanded).length > 0) applyExpandedState(expanded);
   applyTreeHighlights();
+  applyTreeFilters();
 }
 
 function createTreeNode(node, depth, isLast, lineage) {
@@ -2180,11 +2181,12 @@ function createTreeNode(node, depth, isLast, lineage) {
         cbIcon = "";
       }
     }
+    var reasonAttrDir = node.autoExcludeReason ? ' title="' + escHtml(node.autoExcludeReason) + '"' : '';
     var badge = "";
     if (isAutoExcluded && !S.userOverrides.has(node.id))
-      badge = '<span class="tree-badge auto-exc">excluded</span>';
+      badge = '<span class="tree-badge auto-exc"' + reasonAttrDir + '>excluded</span>';
     else if (autoSt === "ambiguous" && !S.userOverrides.has(node.id))
-      badge = '<span class="tree-badge amb">decide</span>';
+      badge = '<span class="tree-badge amb"' + reasonAttrDir + '>decide</span>';
     if (S.userOverrides.has(node.id))
       badge =
         finalSt === "included"
@@ -2293,9 +2295,9 @@ function createTreeNode(node, depth, isLast, lineage) {
     var autoSt2 = node.autoStatus;
     var ext2 = node.extension || "";
     var sizeLabel = node.size ? formatSize(node.size) : "";
-    var isLockedExcluded = autoSt2 === "excluded" && !S.userOverrides.has(node.id);
     var row2 = document.createElement("div");
-    row2.className = "tree-row status-" + finalSt2 + (isLockedExcluded ? " tree-row-locked" : "");
+    row2.className = "tree-row status-" + finalSt2;
+    var reasonAttr2 = node.autoExcludeReason ? ' title="' + escHtml(node.autoExcludeReason) + '"' : '';
     var cbClass2, cbIcon2;
     if (S.userOverrides.has(node.id)) {
       cbClass2 = finalSt2 === "included" ? "cb-included" : "cb-excluded";
@@ -2312,13 +2314,15 @@ function createTreeNode(node, depth, isLast, lineage) {
     }
     var badge2 = "";
     if (autoSt2 === "excluded" && !S.userOverrides.has(node.id))
-      badge2 = '<span class="tree-badge auto-exc">excluded</span>';
+      badge2 = '<span class="tree-badge auto-exc"' + reasonAttr2 + '>excluded</span>';
     if (autoSt2 === "ambiguous" && !S.userOverrides.has(node.id))
-      badge2 = '<span class="tree-badge amb">decide</span>';
+      badge2 = '<span class="tree-badge amb"' + reasonAttr2 + '>decide</span>';
     if (autoSt2 === "ambiguous" && S.userOverrides.has(node.id))
       badge2 = finalSt2 === "included"
         ? '<span class="tree-badge user-inc">decided ✓</span>'
         : '<span class="tree-badge user-exc">undecided ✗</span>';
+    if (autoSt2 === "excluded" && S.userOverrides.has(node.id) && finalSt2 === "included")
+      badge2 = '<span class="tree-badge user-inc"' + reasonAttr2 + '>forced ✓</span>';
     var newBadge = node.isNew ? '<span class="tree-badge tree-badge-new">new</span>' : "";
     row2.innerHTML =
       indentHTML +
@@ -2340,7 +2344,6 @@ function createTreeNode(node, depth, isLast, lineage) {
       "</span>";
     row2.addEventListener("click", function (e) {
       e.stopPropagation();
-      if (isLockedExcluded) return;
       if (autoSt2 === "ambiguous") {
         if (!S.userOverrides.has(node.id)) {
           S.userOverrides.set(node.id, "included");
@@ -2443,6 +2446,12 @@ function renderCategoryChips() {
   var entries = Object.entries(catTotal)
     .filter(function (e) { return e[1] > 0; })
     .sort(function (a, b) { return b[1] - a[1]; });
+  var bulkMenuHtml =
+    '<button class="cat-und-trigger" type="button" title="Bulk actions" aria-label="Bulk actions">⋯</button>' +
+    '<div class="cat-und-btns">' +
+    '<button class="cat-und-btn cat-und-inc" data-und-action="include">☑ all</button>' +
+    '<button class="cat-und-btn cat-und-exc" data-und-action="exclude">☐ all</button>' +
+    '</div>';
   var html = "";
   // "New" chip — files created in the last smart update
   var newCount = 0;
@@ -2456,7 +2465,7 @@ function renderCategoryChips() {
       '<div class="cat-icon-col"><span class="cat-icon">✨</span><span class="cat-count">' + newCount + '</span></div>' +
       '<div class="cat-right"><span class="cat-name cat-new-name">New</span>' +
       '<div class="cat-bar-wrap"><div class="cat-bar cat-new-bar"><div class="cat-bar-fill cat-new-bar-fill" style="width:100%"></div></div></div>' +
-      '</div></div>';
+      '</div>' + bulkMenuHtml + '</div>';
   }
   if (undecidedCount > 0) {
     var undSel = S.selectedCategories.has("__unknown__");
@@ -2464,10 +2473,7 @@ function renderCategoryChips() {
       '<div class="cat-item cat-undecided' + (undSel ? " cat-selected" : "") + '" data-cat="__unknown__">' +
       '<div class="cat-icon-col"><span class="cat-icon">⚠️</span><span class="cat-count">' + undecidedCount + '</span></div>' +
       '<div class="cat-right"><span class="cat-name">Unknown</span></div>' +
-      '<div class="cat-und-btns">' +
-      '<button class="cat-und-btn cat-und-inc" data-und-action="include">☑ all</button>' +
-      '<button class="cat-und-btn cat-und-exc" data-und-action="exclude">☐ all</button>' +
-      '</div>' +
+      bulkMenuHtml +
       '</div>';
   }
   html += entries.map(function (entry) {
@@ -2481,12 +2487,13 @@ function renderCategoryChips() {
       '<div class="cat-icon-col"><span class="cat-icon">' + info.icon + '</span><span class="cat-count">' + total + '</span></div>' +
       '<div class="cat-right"><span class="cat-name">' + info.label + '</span>' +
       '<div class="cat-bar-wrap"><div class="cat-bar"><div class="cat-bar-fill" style="width:' + pct + '%"></div></div></div>' +
-      '</div></div>'
+      '</div>' + bulkMenuHtml + '</div>'
     );
   }).join("");
   container.innerHTML = html;
   container.querySelectorAll(".cat-item").forEach(function (el) {
-    el.addEventListener("click", function () {
+    el.addEventListener("click", function (e) {
+      if (e.target.closest(".cat-und-trigger") || e.target.closest(".cat-und-btn")) return;
       var cat = el.dataset.cat;
       if (S.selectedCategories.has(cat)) {
         S.selectedCategories.delete(cat);
@@ -2498,14 +2505,37 @@ function renderCategoryChips() {
       applyTreeHighlights();
     });
   });
+  container.querySelectorAll(".cat-und-trigger").forEach(function (btn) {
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var item = btn.closest(".cat-item");
+      if (!item) return;
+      // If this chip's menu is already open, close it.
+      if (item.classList.contains("cat-und-open")) {
+        closeCatMenu(item);
+        return;
+      }
+      // Close any other open menu first.
+      document.querySelectorAll(".cat-item.cat-und-open").forEach(closeCatMenu);
+      openCatMenu(item, btn);
+    });
+  });
   container.querySelectorAll(".cat-und-btn").forEach(function (btn) {
     btn.addEventListener("click", function (e) {
       e.stopPropagation();
+      var item = btn.closest(".cat-item");
+      var cat = item ? item.dataset.cat : null;
       var action = btn.dataset.undAction;
+      var target = action === "include" ? "included" : "excluded";
       S.flatNodes.forEach(function (n) {
-        if (n.type === "file" && n.autoStatus === "ambiguous")
-          S.userOverrides.set(n.id, action === "include" ? "included" : "excluded");
+        if (n.type !== "file") return;
+        var matches;
+        if (cat === "__unknown__") matches = n.autoStatus === "ambiguous";
+        else if (cat === "__new__") matches = n.isNew;
+        else matches = (n.categoryId || "unknown") === cat;
+        if (matches) S.userOverrides.set(n.id, target);
       });
+      if (item) closeCatMenu(item);
       renderTree();
       renderCategoryChips();
       refreshFileCount();
@@ -2513,6 +2543,45 @@ function renderCategoryChips() {
       saveCurrentProjectSettings();
     });
   });
+}
+
+function openCatMenu(item, trigger) {
+  var menu = item.querySelector(".cat-und-btns");
+  if (!menu) return;
+  item.classList.add("cat-und-open");
+  var r = trigger.getBoundingClientRect();
+  menu.style.position = "fixed";
+  menu.style.top = (r.top + r.height / 2) + "px";
+  menu.style.left = (r.right + 6) + "px";
+  menu.style.transform = "translateY(-50%)";
+  menu.style.zIndex = "1000";
+  var onEvent = function (ev) {
+    if (!document.body.contains(item)) { closeCatMenu(item); return; }
+    if (ev.type === "click") {
+      if (item.contains(ev.target) || menu.contains(ev.target)) return;
+    }
+    closeCatMenu(item);
+  };
+  item._catMenuCleanup = function () {
+    document.removeEventListener("click", onEvent, true);
+    window.removeEventListener("scroll", onEvent, true);
+    window.removeEventListener("resize", onEvent, true);
+  };
+  document.addEventListener("click", onEvent, true);
+  window.addEventListener("scroll", onEvent, true);
+  window.addEventListener("resize", onEvent, true);
+}
+
+function closeCatMenu(item) {
+  if (!item) return;
+  item.classList.remove("cat-und-open");
+  var menu = item.querySelector(".cat-und-btns");
+  if (menu) menu.style.cssText = "";
+  if (item._catMenuCleanup) {
+    var c = item._catMenuCleanup;
+    item._catMenuCleanup = null;
+    c();
+  }
 }
 
 window._treeFilter = function (f, btn) {
@@ -2531,38 +2600,54 @@ window._treeSearch = function (q) {
 };
 function applyTreeFilters() {
   var q = S.treeSearchQuery.toLowerCase();
+  var active = q.length > 0 || S.treeFilter !== "all";
+
+  function ownMatches(nd) {
+    if (q && !nd.name.toLowerCase().includes(q)) return false;
+    if (nd.type === "directory") {
+      // Directories don't have a meaningful status filter — let descendants decide.
+      return S.treeFilter === "all";
+    }
+    var fs = getFinalStatus(nd);
+    var isUndecided =
+      nd.autoStatus === "ambiguous" && !S.userOverrides.has(nd.id);
+    if (S.treeFilter === "included" && fs !== "included") return false;
+    if (S.treeFilter === "excluded" && (fs !== "excluded" || isUndecided))
+      return false;
+    if (S.treeFilter === "ambiguous" && !isUndecided) return false;
+    return true;
+  }
+
+  var visibility = {};
+  function compute(nd) {
+    var anyChild = false;
+    if (nd.children) {
+      for (var i = 0; i < nd.children.length; i++) {
+        if (compute(nd.children[i])) anyChild = true;
+      }
+    }
+    var visible = nd.type === "directory" ? anyChild : ownMatches(nd);
+    visibility[nd.id] = visible;
+    return visible;
+  }
+  for (var i = 0; i < S.treeData.length; i++) compute(S.treeData[i]);
+
   document.querySelectorAll(".tree-node").forEach(function (el) {
     var nid = el.dataset.nodeId || "";
-    var nd = S.flatNodes.find(function (n) {
-      return n.id === nid;
-    });
-    if (!nd) {
-      el.classList.remove("hidden-by-filter");
-      return;
-    }
-    if (q && !nd.name.toLowerCase().includes(q)) {
-      el.classList.add("hidden-by-filter");
-      return;
-    }
-    var fs =
-      nd.type === "directory" ? getDirFinalStatus(nd) : getFinalStatus(nd);
-    if (S.treeFilter === "included" && fs !== "included") {
-      el.classList.add("hidden-by-filter");
-      return;
-    }
-    if (S.treeFilter === "excluded" && fs !== "excluded") {
-      el.classList.add("hidden-by-filter");
-      return;
-    }
-    if (
-      S.treeFilter === "ambiguous" &&
-      (nd.autoStatus !== "ambiguous" || S.userOverrides.has(nd.id))
-    ) {
-      el.classList.add("hidden-by-filter");
-      return;
-    }
-    el.classList.remove("hidden-by-filter");
+    if (visibility[nid] === false) el.classList.add("hidden-by-filter");
+    else el.classList.remove("hidden-by-filter");
   });
+
+  // When filtering is active, auto-expand folders so matches are visible.
+  if (active) {
+    document.querySelectorAll(".tree-children.collapsed").forEach(function (cc) {
+      var folderNode = cc.parentElement;
+      if (!folderNode || folderNode.classList.contains("hidden-by-filter")) return;
+      cc.classList.remove("collapsed");
+      var tog = folderNode.querySelector(":scope > .tree-row .tree-toggle");
+      if (tog) tog.textContent = "▾";
+    });
+  }
 }
 function refreshFileCount() {
   renderSummary();

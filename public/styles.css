@@ -495,12 +495,27 @@ select.input { cursor: pointer; }
   user-select: none; position: relative;
   border: 1px solid transparent;
 }
-/* Undecided bulk-action buttons — appear on hover */
-.cat-und-btns {
-  display: none; gap: 3px; align-items: center;
+/* Bulk-action trigger — small icon, appears on hover of any chip */
+.cat-und-trigger {
+  display: none; align-items: center; justify-content: center;
   position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 22px; height: 22px; padding: 0;
+  background: var(--s4); border: 1px solid var(--b3); border-radius: 99px;
+  color: var(--t3); cursor: pointer; font-size: 14px; line-height: 1;
+  transition: all .1s;
 }
-.cat-item.cat-undecided:hover .cat-und-btns { display: flex; }
+.cat-item:hover .cat-und-trigger,
+.cat-item.cat-und-open .cat-und-trigger { display: inline-flex; }
+.cat-und-trigger:hover { color: var(--t1); border-color: var(--b3); background: var(--s5); }
+.cat-item.cat-und-open .cat-und-trigger { color: var(--t1); background: var(--s5); }
+/* Floating bulk-action menu — JS sets position:fixed coordinates when opened */
+.cat-und-btns {
+  display: none; gap: 4px; align-items: center;
+  background: var(--s2); border: 1px solid var(--b2);
+  border-radius: var(--r-sm); padding: 4px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.45);
+}
+.cat-item.cat-und-open .cat-und-btns { display: flex; }
 .cat-und-btn {
   font-size: 9px; padding: 2px 7px; border-radius: 99px;
   border: 1px solid var(--b3); cursor: pointer; font-family: var(--mono);
@@ -575,6 +590,7 @@ select.input { cursor: pointer; }
 .tree-btn.active { background: var(--s5); color: var(--t1); }
 .tree-btn.flt-amb.active { color: var(--amb); }
 .tree-btn.flt-exc.active { color: var(--t2); }
+.tree-btn.flt-inc.active { color: var(--a); }
 .tree-search {
   flex: 1; height: 32px; font-size: 12px; padding: 0 12px;
   background: var(--s3); border: 1px solid var(--b2);
@@ -625,8 +641,6 @@ select.input { cursor: pointer; }
   isolation: isolate;
 }
 .tree-row:hover { background: var(--s4); }
-.tree-row-locked { cursor: default; }
-.tree-row-locked:hover { background: transparent; }
 
 /* State backgrounds */
 .tree-row.status-included  { }
@@ -637,7 +651,7 @@ select.input { cursor: pointer; }
 .tree-row.status-excluded > .tree-meta { opacity: .32; }
 .tree-row.status-ambiguous { background: var(--amb-dim); }
 .tree-row.status-ambiguous:hover { background: rgba(245,158,11,.12); }
-.tree-row.hidden-by-filter { display: none; }
+.tree-node.hidden-by-filter { display: none; }
 /* Category highlight — applied by applyTreeHighlights() */
 .tree-row.highlight-cat {
   background: rgba(32,227,160,.06);
