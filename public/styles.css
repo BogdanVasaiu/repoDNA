@@ -691,23 +691,27 @@ select.input { cursor: pointer; }
 
 /* Indent guides — ASCII-style connected branches (├── │   └──) */
 .tree-guide {
-  width: 18px; flex-shrink: 0; position: relative;
+  width: 20px; flex-shrink: 0; position: relative;
   align-self: stretch; z-index: 1;
 }
-/* Vertical pipe through ancestor levels — continuous line */
+/* Vertical pipe through ancestor levels — continuous line.
+   Using a left border (rather than a 1px-background fill) snaps the line to the
+   integer pixel grid, which keeps it from rendering blurry on fractional zooms. */
 .tree-guide::after {
   content: ''; position: absolute;
   left: 9px; top: 0; bottom: 0;
-  width: 1px; background: var(--b3);
+  border-left: 1px solid var(--b3);
 }
 /* Empty: ancestor at this level was the last child, no pipe carried down */
 .tree-guide-empty::after { display: none; }
-/* Branch (deepest indent for this row): horizontal arm at row mid-line */
+/* Branch (deepest indent for this row): horizontal arm at row mid-line.
+   Extends 2px past the guide's right edge so it visually meets the toggle's
+   margin instead of stopping in mid-air. */
 .tree-guide-branch::before {
   content: ''; position: absolute;
   left: 9px; right: -2px;
-  top: 50%; height: 1px;
-  background: var(--b3);
+  top: 50%;
+  border-top: 1px solid var(--b3);
 }
 /* Last child: vertical pipe stops at the arm (└── shape) */
 .tree-guide-branch.tree-guide-last::after {

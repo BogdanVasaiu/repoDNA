@@ -2143,15 +2143,25 @@ function createTreeNode(node, depth, isLast, lineage) {
   var wrapper = document.createElement("div");
   wrapper.className = "tree-node";
   wrapper.dataset.nodeId = node.id;
+  // Indent guides — one column per depth level.
+  //   - Column i = depth-1 is the BRANCH column for this node:
+  //       └── if this node is last among its siblings, ├── otherwise.
+  //   - Column i < depth-1 is a CONTINUATION column for an ancestor's branch.
+  //       It carries a vertical pipe IFF that ancestor still has siblings below
+  //       this row — i.e., the ancestor at depth (i+1) is NOT last.
+  //
+  //   `lineage` is built as [root.isLast, parent1.isLast, parent2.isLast, …],
+  //   so the ancestor at depth (i+1) lives at lineage[i+1]. Reading lineage[i]
+  //   (off by one) was the source of pipes that leaked below a "last" parent or
+  //   went missing when a non-last parent sat under a "last" grandparent.
   var indentHTML = "";
   for (var i = 0; i < depth; i++) {
-    var ancestorIsLast = !!lineage[i];
     var isBranchLevel = i === depth - 1;
     var classes = "tree-guide";
     if (isBranchLevel) {
       classes += " tree-guide-branch";
       if (isLast) classes += " tree-guide-last";
-    } else if (ancestorIsLast) {
+    } else if (lineage[i + 1]) {
       classes += " tree-guide-empty";
     }
     indentHTML += '<span class="' + classes + '"></span>';
