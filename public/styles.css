@@ -420,7 +420,7 @@ select.input { cursor: pointer; }
 /* ── REVIEW ──────────────────────────────────────────────── */
 .review-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 11px 0; border-bottom: 1px solid var(--b1); gap: 12px;
+  padding: 7px 0; border-bottom: 1px solid var(--b1); gap: 12px;
 }
 .review-row:last-child { border-bottom: none; }
 .review-key { font-size: 13px; color: var(--t2); display: flex; align-items: center; gap: 7px; }

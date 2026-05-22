@@ -12,6 +12,34 @@
 </head>
 <body>
 
+<!-- ── LOCAL-BUILD BANNER (hidden on repodna.com; revealed by inline JS below) ── -->
+<div id="local-banner" hidden style="display:none;align-items:center;justify-content:center;gap:8px;padding: 3px 9px;background:var(--a-dim);border-bottom:1px solid var(--a-border);color:var(--t2);font-family:var(--font);position:relative;z-index:50;">
+  <span style="font-family:var(--mono);font-size:12px;letter-spacing:.01em;">
+    Check
+    <a href="https://repodna.com" target="_blank" rel="noopener" style="color:var(--a);text-decoration:none;font-weight:700;background:var(--a-dim);padding:2px 8px;border-radius:4px;border:1px solid var(--a-border);">repodna.com</a>
+    for the latest version
+    <span style="color:var(--a);font-size:18px;">→</span>
+  </span>
+  <button id="local-banner-close" type="button" title="Dismiss" aria-label="Dismiss" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--t3);cursor:pointer;font-size:14px;line-height:1;padding:4px 6px;border-radius:4px;">✕</button>
+</div>
+<script>
+  (function () {
+    var isLocal = location.hostname !== 'repodna.com' && location.hostname !== 'www.repodna.com';
+    var dismissed = false;
+    try { dismissed = localStorage.getItem('repodna-local-banner-dismissed') === '1'; } catch (_) {}
+    if (isLocal && !dismissed) {
+      var el = document.getElementById('local-banner');
+      if (el) { el.hidden = false; el.style.display = 'flex'; }
+    }
+    var btn = document.getElementById('local-banner-close');
+    if (btn) btn.addEventListener('click', function () {
+      var el = document.getElementById('local-banner');
+      if (el) el.style.display = 'none';
+      try { localStorage.setItem('repodna-local-banner-dismissed', '1'); } catch (_) {}
+    });
+  })();
+</script>
+
 <!-- ── NAVIGATION ──────────────────────────────────────────── -->
 <nav class="site-nav">
   <a class="logo" href="#">
@@ -332,7 +360,32 @@
       </div>
 
       <div class="step-v-row fade-in">
-        <div class="step-v-num">05</div>
+        <div class="step-v-num">5.1</div>
+        <div class="step-v-body">
+          <div class="step-v-title">Pick your context file target</div>
+          <p class="step-v-desc">
+            Choose which AI agent's context file format to generate — CLAUDE.md,
+            AGENTS.md, .cursorrules, Copilot instructions, and more. RepoDNA writes the right file in the right
+            place for each agent you ship to.
+          </p>
+          <span class="step-v-tag">Claude · Cursor · Copilot · Codex · Gemini · 12+ agents</span>
+        </div>
+        <div class="step-v-visual">
+          <div class="step-v-frame" onclick="openLightbox(4)" title="Click to zoom">
+            <div class="step-v-bar">
+              <span class="install-dot dot-red"></span>
+              <span class="install-dot dot-amber"></span>
+              <span class="install-dot dot-green"></span>
+            </div>
+            <img src="shared/assets/steps/step-05-1.png" alt="Context file selector"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="step-v-ph" style="display:none">shared/assets/steps/step-05-1.png</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-v-row fade-in">
+        <div class="step-v-num">5.2</div>
         <div class="step-v-body">
           <div class="step-v-title">Watch it run — then use the output</div>
           <p class="step-v-desc">
@@ -345,13 +398,13 @@
           <span class="step-v-tag">Live preview · retry · edit from UI · cache-safe</span>
         </div>
         <div class="step-v-visual">
-          <div class="step-v-frame" onclick="openLightbox(4)" title="Click to zoom">
+          <div class="step-v-frame" onclick="openLightbox(5)" title="Click to zoom">
             <div class="step-v-bar">
               <span class="install-dot dot-red"></span>
               <span class="install-dot dot-amber"></span>
               <span class="install-dot dot-green"></span>
             </div>
-            <img src="shared/assets/steps/step-05.png" alt="Run step"
+            <img src="shared/assets/steps/step-05-2.png" alt="Run step"
                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
             <div class="step-v-ph" style="display:none">shared/assets/steps/step-05.png</div>
           </div>
@@ -983,6 +1036,7 @@
   const errorLink    = document.getElementById('vp-error-link');
 
   function thumbUrl(id) {
+    if (!id) return '';
     return `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
   }
 
@@ -992,10 +1046,11 @@
       const card = document.createElement('button');
       card.className = 'vp-card' + (i === 0 ? ' active' : '');
       card.setAttribute('aria-label', 'Play episode ' + (i + 1));
+      const _thumb = thumbUrl(v.id);
       card.innerHTML = `
-        <div class="vp-card-thumb">
-          <img src="${thumbUrl(v.id)}" alt="" loading="lazy"
-               onerror="this.style.background='var(--s3)';this.style.opacity=0">
+        <div class="vp-card-thumb" style="${!_thumb ? 'background:var(--s3);' : ''}">
+          ${_thumb ? `<img src="${_thumb}" alt="" loading="lazy"
+               onerror="this.style.background='var(--s3)';this.style.opacity=0">` : ''}
           ${v.duration ? `<span class="vp-card-dur">${v.duration}</span>` : ''}
           <div class="vp-card-play-icon">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
@@ -1017,7 +1072,9 @@
     const v  = VIDEO_SERIES[vpIdx];
 
     // Update player
-    thumbImg.src              = thumbUrl(v.id);
+    const _mainThumb = thumbUrl(v.id);
+    if (_mainThumb) thumbImg.src = _mainThumb;
+    else thumbImg.removeAttribute('src');
     thumbOverlay.style.display = '';
     iframe.src                 = '';
     errorOverlay.classList.remove('visible');
@@ -1082,7 +1139,8 @@
     'shared/assets/steps/step-02.png',
     'shared/assets/steps/step-03.png',
     'shared/assets/steps/step-04.png',
-    'shared/assets/steps/step-05.png',
+    'shared/assets/steps/step-05-1.png',
+    'shared/assets/steps/step-05-2.png',
   ];
 
   let lbIdx   = 0;
