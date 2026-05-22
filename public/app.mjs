@@ -562,19 +562,68 @@ function semverGt(a, b) {
   return false;
 }
 
+var _UPDATE_DISMISS_KEY = "repodna-update-dismissed";
 async function checkForUpdate() {
   try {
     var r = await fetch("/api/check-update");
     var d = await r.json();
     if (!d.ok || !d.latest) return;
     if (!semverGt(d.latest, d.current)) return;
-    var banner = document.getElementById("update-banner");
-    var text   = document.getElementById("update-banner-text");
-    var link   = document.getElementById("update-banner-link");
-    if (!banner || !text || !link) return;
-    text.textContent = "repoDNA v" + d.latest + " is available (you have v" + d.current + ") — update with git pull or download the zip.";
+
+    // Dismissal is scoped to (serverStartId, latestVersion): survives a browser
+    // refresh, but a fresh `node main.mjs` boot mints a new id and the banner
+    // returns. Falls back to plain version if the server didn't send an id.
+    var dismissToken = (d.serverStartId ? d.serverStartId + ":" : "") + d.latest;
+    try {
+      if (localStorage.getItem(_UPDATE_DISMISS_KEY) === dismissToken) return;
+    } catch (e) {}
+
+    var banner  = document.getElementById("update-banner");
+    var verEl   = document.getElementById("update-banner-version");
+    var curEl   = document.getElementById("update-banner-current");
+    var link    = document.getElementById("update-banner-link");
+    var copyBtn = document.getElementById("update-banner-copy");
+    var copyLbl = document.getElementById("update-banner-copy-label");
+    var closeBtn = document.getElementById("update-banner-close");
+    if (!banner || !verEl || !link || !copyBtn || !closeBtn) return;
+
+    verEl.textContent = "v" + d.latest;
+    if (curEl) curEl.textContent = "you have v" + d.current;
     link.href = d.url;
-    banner.style.display = "flex";
+
+    var copyResetTimer = null;
+    copyBtn.onclick = async function() {
+      var cmd = "node update.mjs";
+      var ok = false;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(cmd);
+          ok = true;
+        } else {
+          var ta = document.createElement("textarea");
+          ta.value = cmd; ta.style.position = "fixed"; ta.style.opacity = "0";
+          document.body.appendChild(ta); ta.select();
+          ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+        }
+      } catch (e) { ok = false; }
+      if (ok) {
+        copyBtn.classList.add("is-copied");
+        if (copyLbl) copyLbl.textContent = "Copied — run in your terminal";
+        if (copyResetTimer) clearTimeout(copyResetTimer);
+        copyResetTimer = setTimeout(function() {
+          copyBtn.classList.remove("is-copied");
+          if (copyLbl) copyLbl.textContent = "Copy update command";
+        }, 2400);
+      }
+    };
+
+    closeBtn.onclick = function() {
+      try { localStorage.setItem(_UPDATE_DISMISS_KEY, dismissToken); } catch (e) {}
+      banner.classList.remove("is-visible");
+    };
+
+    banner.classList.add("is-visible");
   } catch (e) {}
 }
 

@@ -39,7 +39,8 @@ import { getDefaultRules } from "./classifier.mjs";
 
 var GITHUB_REPO = "BogdanVasaiu/repodna";
 var _lastModelsRefresh = 0;
-var _updateChecked = false;
+var _serverStartId = String(Date.now());
+var _updateCheckCache = null;
 var AGENT_TARGETS_SERVER = {
   claude: "CLAUDE.md",
   codex: "AGENTS.md",
@@ -1763,20 +1764,32 @@ export function startServer() {
       }
 
       // ── API: Check for updates
+      // Hits GitHub once per server lifetime, then serves the cached result on
+      // every call (so a browser refresh can still render the banner). The
+      // response carries serverStartId — the client uses it to scope its
+      // "dismissed" flag to this process, so `node main.mjs` restarts get a
+      // fresh banner.
       if (url.pathname === "/api/check-update") {
-        if (_updateChecked) { jsonOut({ ok: false }); return; }
-        _updateChecked = true;
+        if (_updateCheckCache) {
+          jsonOut({ ...(_updateCheckCache), serverStartId: _serverStartId });
+          return;
+        }
         try {
           const ghRes = await fetch(
             `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`,
             { headers: { "User-Agent": "repoDNA/" + VERSION } }
           );
-          if (!ghRes.ok) { jsonOut({ ok: false }); return; }
+          if (!ghRes.ok) {
+            _updateCheckCache = { ok: false };
+            jsonOut({ ok: false, serverStartId: _serverStartId });
+            return;
+          }
           const ghData = await ghRes.json();
           const latest = (ghData.tag_name || "").replace(/^v/, "");
-          jsonOut({ ok: true, latest, current: VERSION, url: ghData.html_url || "" });
+          _updateCheckCache = { ok: true, latest, current: VERSION, url: ghData.html_url || "" };
+          jsonOut({ ...(_updateCheckCache), serverStartId: _serverStartId });
         } catch (e) {
-          jsonOut({ ok: false, error: e.message });
+          jsonOut({ ok: false, error: e.message, serverStartId: _serverStartId });
         }
         return;
       }
