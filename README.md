@@ -9,7 +9,11 @@ git clone https://github.com/BogdanVasaiu/repodna
 cd repodna && node main.mjs
 ```
 
-Then open **http://localhost:3741** in your browser.
+The UI opens automatically in your default browser at **http://localhost:3741**. Pass `--no-open` to skip the auto-launch (useful for headless/CI):
+
+```bash
+node main.mjs --no-open
+```
 
 ---
 
