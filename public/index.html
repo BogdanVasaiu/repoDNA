@@ -189,8 +189,8 @@
             <span class="p2si-label">Excluded</span>
           </div>
           <div class="p2si-seg">
-            <div class="p2si-top"><span class="p2si-dot c-amb"></span><span class="p2si-val amber" id="p2-ambiguous">0</span></div>
-            <span class="p2si-label">Unknown</span>
+            <div class="p2si-top"><span class="p2si-dot c-amb"></span><span class="p2si-val amber" id="p2-ambiguous">0<span class="p2si-val-sub">/0</span></span></div>
+            <span class="p2si-label">decided</span>
           </div>
           <div class="p2si-seg">
             <div class="p2si-top"><span class="p2si-val dim" id="p2-size">—</span></div>
@@ -210,7 +210,21 @@
 
             <!-- Category list -->
             <div class="card p2-cats-card">
-              <div class="card-title">Categories <span class="cat-hint">click to highlight</span></div>
+              <div class="card-title">Categories
+                <span class="mcat-info-wrap">
+                  <button class="mcat-info-btn">i</button>
+                  <span class="mcat-tooltip" style="width:240px">
+                    <strong style="color:var(--t1);display:block;margin-bottom:8px">Categories</strong>
+                    A visual tool that helps you find files faster. Click a category to highlight all its files in the tree — click again to clear.
+                    <span style="display:block;border-top:1px solid var(--b1);margin:8px 0"></span>
+                    <span style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+                      <span style="font-family:var(--mono);font-size:11px;color:var(--t2)">27</span>
+                    </span>
+                    <span style="display:block;height:3px;background:var(--b2);border-radius:99px;margin-bottom:10px;overflow:hidden"><span style="display:block;height:100%;width:70%;background:var(--a);border-radius:99px"></span></span>
+                    The number is the total files in that category. The bar shows how many are currently selected for the analysis.
+                  </span>
+                </span>
+              </div>
               <div id="category-list" class="cat-list">
                 <div style="color:var(--muted);font-size:11px;padding:4px 0">Loading…</div>
               </div>
@@ -218,7 +232,29 @@
 
             <!-- Advanced rules -->
             <div class="card">
-              <div class="card-title">Custom Rules</div>
+              <div class="card-title">Custom Rules
+                <span class="mcat-info-wrap">
+                  <button class="mcat-info-btn">i</button>
+                  <span class="mcat-tooltip" style="width:278px">
+                    <strong style="color:var(--t1);display:block;margin-bottom:8px">Custom Rules</strong>
+                    Rules intercept files, folders, and extensions based on your project type — deciding what should and shouldn't go into the context file.
+                    <span style="display:block;border-top:1px solid var(--b1);margin:8px 0"></span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+                      <span style="flex-shrink:0;margin-top:3px;width:2px;height:28px;border-radius:2px;background:var(--err)"></span>
+                      <span><strong style="color:var(--err)">Excluded by default</strong> — folders, files, and extensions the system considers useless. You can still force any of them in by clicking directly in the tree.</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+                      <span style="flex-shrink:0;margin-top:3px;width:2px;height:22px;border-radius:2px;background:var(--a)"></span>
+                      <span><strong style="color:var(--a)">Included by default</strong> — known files and extensions that are usually meaningful for a context file.</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:9px">
+                      <span style="flex-shrink:0;margin-top:3px;width:2px;height:22px;border-radius:2px;background:var(--amb)"></span>
+                      <span><strong style="color:var(--amb)">Unknown</strong> — no rule matched. Decide manually whether to keep it, or write your own rule to handle it automatically.</span>
+                    </span>
+                    <span style="color:var(--t3);font-size:10px;display:block;border-top:1px solid var(--b2);padding-top:7px">Add your own rules to fine-tune what gets included for your specific project.</span>
+                  </span>
+                </span>
+              </div>
               <div id="adv-settings">
                 <div class="adv-tabs" id="adv-tabs"></div>
                 <div id="adv-content"></div>
@@ -245,23 +281,40 @@
 
               <!-- Legend -->
               <div class="tree-legend">
+                <div class="tree-undoredo">
+                  <button class="tree-ur-btn" id="btn-undo" onclick="window._historyUndo()" disabled title="Nothing to undo">↶</button>
+                  <button class="tree-ur-btn" id="btn-redo" onclick="window._historyRedo()" disabled title="Nothing to redo">↷</button>
+                </div>
+                <span class="tree-legend-div" style="margin-left: 4px; margin-right: 4px"></span>
                 <span class="leg-item leg-inc"><span class="leg-dot-i">✓</span> Selected</span>
                 <span class="leg-item leg-exc"><span class="leg-dot-i">—</span> Unselected</span>
                 <span class="leg-item leg-amb"><span class="leg-dot-i">?</span> Decide</span>
                 <span class="mcat-info-wrap">
                   <button class="mcat-info-btn">i</button>
                   <span class="mcat-tooltip" style="width:280px">
-                    <strong style="color:var(--t1);display:block;margin-bottom:5px">What the states mean</strong>
-                    <strong style="color:var(--a)">✓ Selected</strong> — included in the analysis (by rule or your choice).<br>
-                    <strong style="color:var(--t3)">— Unselected</strong> — left out (by rule or your choice). Click to force-include; hover the badge for the rule's reason.<br>
-                    <strong style="color:var(--amb)">? Decide</strong> — unknown file. Click once to select, again to unselect, third click to reset.<br><br>
-                    Use the folder checkbox to select or unselect all files inside it at once.
+                    <strong style="color:var(--t1);display:block;margin-bottom:6px">File states</strong>
+                    When you add a project, the classifier automatically checks or unchecks files and folders based on built-in rules. You can then adjust any selection manually, or define your own rules in the <em style="color:var(--t2)">Custom Rules</em> card.<br><br>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+                      <span class="leg-item leg-inc" style="flex-shrink:0;margin-top:3px"><span class="leg-dot-i">✓</span></span>
+                      <span><strong style="color:var(--a)">Selected</strong> — included in the analysis. These files will be used to generate the context file.</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+                      <span class="leg-item leg-exc" style="flex-shrink:0;margin-top:3px"><span class="leg-dot-i">—</span></span>
+                      <span><strong style="color:var(--t3)">Unselected</strong> — excluded from the analysis. These files will not appear in the context file.</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px">
+                      <span class="leg-item leg-amb" style="flex-shrink:0;margin-top:3px"><span class="leg-dot-i">?</span></span>
+                      <span><strong style="color:var(--amb)">Decide</strong> — the classifier has no rule for this file. It's worth reviewing these manually and checking or unchecking them as needed.</span>
+                    </span>
+                    <span style="color:var(--t3);font-size:10px;display:block;border-top:1px solid var(--b2);padding-top:7px">If many files show <span class="leg-item leg-amb" style="display:inline-flex;vertical-align:middle"><span class="leg-dot-i">?</span></span>, add a rule in <strong style="color:var(--t2)">Custom Rules</strong> to handle them automatically.</span>
                   </span>
                 </span>
-                <span class="leg-sep"></span>
-                <button class="tree-global-btn tree-global-btn-toggle" id="btn-toggle-expand" onclick="window._toggleExpandAll(this)" title="Expand or collapse all folders">⊞ Expand all</button>
-                <button class="tree-global-btn tree-global-btn-inc" onclick="window._includeAllFiles()">☑ Select all</button>
-                <button class="tree-global-btn tree-global-btn-exc" onclick="window._excludeAllFiles()">☐ Unselect all</button>
+                <div class="tree-legend-actions">
+                  <button class="tree-nav-text" id="btn-toggle-expand" onclick="window._toggleExpandAll(this)" title="Expand or collapse all folders">⊞ Expand all</button>
+                  <span class="tree-legend-div"></span>
+                  <button class="tree-sel-pill tree-sel-inc" onclick="window._includeAllFiles()" title="Mark every file as included"><span class="tree-sel-ic">☑</span>Select all</button>
+                  <button class="tree-sel-pill tree-sel-exc" onclick="window._excludeAllFiles()" title="Mark every file as excluded"><span class="tree-sel-ic">☐</span>Unselect all</button>
+                </div>
               </div>
 
               <!-- Tree -->

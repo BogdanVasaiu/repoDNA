@@ -150,6 +150,206 @@ var DEFAULT_CUSTOM_RULES = {
   removedDefaultIncludedFilenames: [],
 };
 
+// ═══════════════════════════════════════════════════════════
+// UNDO / REDO HISTORY  (step 03 — file selection)
+// ───────────────────────────────────────────────────────────
+// Patch-based: each entry stores only the diff between userOverrides
+// before/after the mutation, plus the rules JSON if customRules changed.
+// Capped by entry-count AND byte budget so large projects (10k+ files)
+// can't balloon memory. Evicts oldest first; never evicts the last entry
+// (so the most recent action stays undoable even if it alone exceeds the
+// budget). Single-entry size is approximated, not measured exactly —
+// good enough for budget enforcement.
+// ═══════════════════════════════════════════════════════════
+var History = {
+  undo: [],
+  redo: [],
+  MAX_ENTRIES: 50,
+  MAX_BYTES: 5 * 1024 * 1024, // 5 MB total across both stacks
+  bytes: 0,
+  _snap: null, // pre-mutation snapshot captured by begin()
+
+  begin: function () {
+    this._snap = {
+      overrides: new Map(S.userOverrides),
+      rules: JSON.stringify(S.customRules),
+    };
+  },
+  abort: function () { this._snap = null; },
+
+  commit: function (label, opts) {
+    var snap = this._snap;
+    this._snap = null;
+    if (!snap) return;
+    var patch = this._diff(snap, label, opts);
+    if (!patch) return;
+    this.undo.push(patch);
+    this.bytes += patch._bytes;
+    // Clear redo on any new branch.
+    this._dropRedo();
+    this._evict();
+    this._updateUi();
+  },
+
+  _diff: function (snap, label, opts) {
+    var changes = [];
+    snap.overrides.forEach(function (v, k) {
+      var cur = S.userOverrides.get(k);
+      if (cur === undefined) changes.push([k, v, null]);
+      else if (cur !== v) changes.push([k, v, cur]);
+    });
+    S.userOverrides.forEach(function (v, k) {
+      if (!snap.overrides.has(k)) changes.push([k, null, v]);
+    });
+    var curRules = JSON.stringify(S.customRules);
+    var rulesChanged = curRules !== snap.rules;
+    if (!changes.length && !rulesChanged) return null;
+    var bytes = 64; // overhead
+    for (var i = 0; i < changes.length; i++) bytes += changes[i][0].length + 12;
+    if (rulesChanged) bytes += snap.rules.length + curRules.length;
+    return {
+      label: label || "Edit",
+      changes: changes,
+      prevRules: rulesChanged ? snap.rules : null,
+      nextRules: rulesChanged ? curRules : null,
+      needsRescan: !!(opts && opts.needsRescan) || rulesChanged,
+      _bytes: bytes,
+    };
+  },
+
+  _apply: function (patch, dir) {
+    var changes = patch.changes;
+    for (var i = 0; i < changes.length; i++) {
+      var id = changes[i][0];
+      var v = dir < 0 ? changes[i][1] : changes[i][2];
+      if (v === null) S.userOverrides.delete(id);
+      else S.userOverrides.set(id, v);
+    }
+    if (patch.prevRules || patch.nextRules) {
+      var r = dir < 0 ? patch.prevRules : patch.nextRules;
+      if (r) S.customRules = JSON.parse(r);
+    }
+  },
+
+  undoStep: async function () {
+    if (!this.undo.length) return;
+    var patch = this.undo.pop();
+    this.bytes -= patch._bytes;
+    this._apply(patch, -1);
+    this.redo.push(patch);
+    this.bytes += patch._bytes;
+    this._evict();
+    await this._after(patch);
+  },
+
+  redoStep: async function () {
+    if (!this.redo.length) return;
+    var patch = this.redo.pop();
+    this.bytes -= patch._bytes;
+    this._apply(patch, +1);
+    this.undo.push(patch);
+    this.bytes += patch._bytes;
+    this._evict();
+    await this._after(patch);
+  },
+
+  _after: async function (patch) {
+    if (patch.needsRescan) {
+      try { await rescanWithRules(); } catch (e) {}
+      try { renderAdvContent(); } catch (e) {}
+    }
+    try { renderTree(); } catch (e) {}
+    try { renderCategoryChips(); } catch (e) {}
+    try { refreshFileCount(); } catch (e) {}
+    try { renderSummary(); } catch (e) {}
+    try { saveCurrentProjectSettings(); } catch (e) {}
+    this._updateUi();
+  },
+
+  _dropRedo: function () {
+    for (var i = 0; i < this.redo.length; i++) this.bytes -= this.redo[i]._bytes;
+    this.redo.length = 0;
+    if (this.bytes < 0) this.bytes = 0;
+  },
+
+  _evict: function () {
+    // Evict from undo first (oldest), then redo, but never empty either stack
+    // if the entry being evicted is the only remaining state. Loop until under both caps.
+    var safety = 1000;
+    while (safety-- > 0) {
+      var totalCount = this.undo.length + this.redo.length;
+      if (totalCount <= this.MAX_ENTRIES && this.bytes <= this.MAX_BYTES) break;
+      // Pick the oldest entry across both stacks. Undo[0] is older than any redo entry
+      // (redo only ever holds entries created via undoStep, which are necessarily newer
+      // than the bottom of undo).
+      var victim = null;
+      if (this.undo.length > 1) victim = this.undo.shift();
+      else if (this.redo.length > 1) victim = this.redo.shift();
+      else break; // refuse to evict the last entry on each side
+      this.bytes -= victim._bytes;
+      if (this.bytes < 0) this.bytes = 0;
+    }
+  },
+
+  reset: function () {
+    this.undo.length = 0;
+    this.redo.length = 0;
+    this.bytes = 0;
+    this._snap = null;
+    this._updateUi();
+  },
+
+  _updateUi: function () {
+    var ub = document.getElementById("btn-undo");
+    var rb = document.getElementById("btn-redo");
+    if (ub) {
+      ub.disabled = !this.undo.length;
+      ub.title = this.undo.length
+        ? "Undo: " + this.undo[this.undo.length - 1].label + "  (Ctrl+Z)"
+        : "Nothing to undo";
+    }
+    if (rb) {
+      rb.disabled = !this.redo.length;
+      rb.title = this.redo.length
+        ? "Redo: " + this.redo[this.redo.length - 1].label + "  (Ctrl+Shift+Z)"
+        : "Nothing to redo";
+    }
+  },
+};
+
+// Wrap a synchronous OR async mutation so its diff becomes one history entry.
+function withHistory(label, fn, opts) {
+  History.begin();
+  var ret;
+  try { ret = fn(); }
+  catch (e) { History.abort(); throw e; }
+  if (ret && typeof ret.then === "function") {
+    return ret.then(
+      function (v) { History.commit(label, opts); return v; },
+      function (err) { History.abort(); throw err; }
+    );
+  }
+  History.commit(label, opts);
+  return ret;
+}
+
+window._historyUndo = function () { History.undoStep(); };
+window._historyRedo = function () { History.redoStep(); };
+
+// Keyboard shortcuts — only on step 03 (file selection), and only when no
+// editable field has focus (so typing into a rule input or search box doesn't
+// trigger undo).
+document.addEventListener("keydown", function (e) {
+  if (S.currentPage !== 2) return;
+  var t = e.target;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+  var meta = e.ctrlKey || e.metaKey;
+  if (!meta) return;
+  var k = e.key.toLowerCase();
+  if (k === "z" && !e.shiftKey) { e.preventDefault(); History.undoStep(); }
+  else if ((k === "z" && e.shiftKey) || k === "y") { e.preventDefault(); History.redoStep(); }
+});
+
 var AGENT_TARGETS = {
   claude: { name: "Claude Code", file: "CLAUDE.md", icon: "Claude-icon.svg" },
   codex: { name: "Codex CLI", file: "AGENTS.md", icon: "Codex-icon.svg" },
@@ -175,6 +375,9 @@ var AGENT_TARGETS = {
 
 function applyProjectSettings(proj) {
   var p = proj || {};
+
+  // History belongs to a single project session; switching projects drops it.
+  try { History.reset(); } catch (e) {}
 
   // Description — always overwrite (even with empty string)
   document.getElementById("project-desc").value = p.description || "";
@@ -879,7 +1082,9 @@ function createFileRow(fid) {
     '<span class="' + statusClass + '">' + statusIcon + "</span>" +
     changeBadge +
     getFileBadge(ext) +
-    '<span class="frun-name' + (isDeleted ? " frun-name-deleted" : "") + '">' +
+    '<span class="frun-name' + (isDeleted ? " frun-name-deleted" : "") + '" title="' +
+    escHtml(fid) +
+    '">' +
     escHtml(fid) +
     "</span>" +
     retryBtn +
@@ -1372,12 +1577,8 @@ async function loadOllamaModelsCatalog() {
     var btn = wrap.querySelector('.mcat-info-btn');
     var r = btn.getBoundingClientRect();
     tooltip.style.left = Math.min(r.left, window.innerWidth - 260) + 'px';
-    tooltip.style.top  = (r.top - tooltip.offsetHeight - 8) + 'px';
+    tooltip.style.top  = (r.bottom + 8) + 'px';
     tooltip.classList.add('visible');
-    // recalc top after render (height now known)
-    requestAnimationFrame(function() {
-      tooltip.style.top = (r.top - tooltip.offsetHeight - 8) + 'px';
-    });
   });
   document.addEventListener('mouseout', function(e) {
     var wrap = e.target.closest('.mcat-info-wrap');
@@ -2198,17 +2399,17 @@ function createTreeNode(node, depth, isLast, lineage) {
         cbIcon = "";
       }
     }
-    var reasonAttrDir = node.autoExcludeReason ? ' title="' + escHtml(node.autoExcludeReason) + '"' : '';
+    var reasonAttrDir = ' title="' + (node.autoExcludeReason ? 'Excluded by rule: ' + escHtml(node.autoExcludeReason) : 'Excluded by a classifier rule') + '"';
     var badge = "";
     if (isAutoExcluded && !S.userOverrides.has(node.id))
       badge = '<span class="tree-badge auto-exc"' + reasonAttrDir + '>excluded</span>';
     else if (autoSt === "ambiguous" && !S.userOverrides.has(node.id))
-      badge = '<span class="tree-badge amb"' + reasonAttrDir + '>decide</span>';
+      badge = '<span class="tree-badge amb" title="No rule matched — click to decide">decide</span>';
     if (S.userOverrides.has(node.id))
       badge =
         finalSt === "included"
-          ? '<span class="tree-badge user-inc">manual</span>'
-          : '<span class="tree-badge user-exc">manual</span>';
+          ? '<span class="tree-badge user-inc" title="Manually included">manual</span>'
+          : '<span class="tree-badge user-exc" title="Manually excluded">manual</span>';
     var dirBtnsHTML =
       '<span class="dir-inline-btns"><button class="dir-btn dir-btn-inc" data-da="include">☑ Select all</button><button class="dir-btn dir-btn-exc" data-da="exclude">☐ Unselect all</button></span>';
     row.innerHTML =
@@ -2257,16 +2458,21 @@ function createTreeNode(node, depth, isLast, lineage) {
       btn.addEventListener("click", function (e) {
         e.stopPropagation();
         var action = btn.dataset.da;
-        function applyAll(n) {
-          if (n.type === "file")
-            S.userOverrides.set(
-              n.id,
-              action === "include" ? "included" : "excluded",
-            );
-          if (n.children)
-            for (var i = 0; i < n.children.length; i++) applyAll(n.children[i]);
-        }
-        applyAll(node);
+        withHistory(
+          (action === "include" ? "Select" : "Unselect") + " folder " + node.name,
+          function () {
+            function applyAll(n) {
+              if (n.type === "file")
+                S.userOverrides.set(
+                  n.id,
+                  action === "include" ? "included" : "excluded",
+                );
+              if (n.children)
+                for (var i = 0; i < n.children.length; i++) applyAll(n.children[i]);
+            }
+            applyAll(node);
+          }
+        );
         renderTree();
         renderCategoryChips();
         refreshFileCount();
@@ -2284,11 +2490,16 @@ function createTreeNode(node, depth, isLast, lineage) {
       }
       checkAll(node);
       var target = allIncluded ? "excluded" : "included";
-      function applyAll(n) {
-        if (n.type === "file") S.userOverrides.set(n.id, target);
-        if (n.children) n.children.forEach(applyAll);
-      }
-      applyAll(node);
+      withHistory(
+        (target === "included" ? "Select" : "Unselect") + " folder " + node.name,
+        function () {
+          function applyAll(n) {
+            if (n.type === "file") S.userOverrides.set(n.id, target);
+            if (n.children) n.children.forEach(applyAll);
+          }
+          applyAll(node);
+        }
+      );
       renderTree();
       renderCategoryChips();
       refreshFileCount();
@@ -2314,7 +2525,7 @@ function createTreeNode(node, depth, isLast, lineage) {
     var sizeLabel = node.size ? formatSize(node.size) : "";
     var row2 = document.createElement("div");
     row2.className = "tree-row status-" + finalSt2;
-    var reasonAttr2 = node.autoExcludeReason ? ' title="' + escHtml(node.autoExcludeReason) + '"' : '';
+    var reasonAttr2 = ' title="' + (node.autoExcludeReason ? 'Excluded by rule: ' + escHtml(node.autoExcludeReason) : 'Excluded by a classifier rule') + '"';
     var cbClass2, cbIcon2;
     if (S.userOverrides.has(node.id)) {
       cbClass2 = finalSt2 === "included" ? "cb-included" : "cb-excluded";
@@ -2333,14 +2544,14 @@ function createTreeNode(node, depth, isLast, lineage) {
     if (autoSt2 === "excluded" && !S.userOverrides.has(node.id))
       badge2 = '<span class="tree-badge auto-exc"' + reasonAttr2 + '>excluded</span>';
     if (autoSt2 === "ambiguous" && !S.userOverrides.has(node.id))
-      badge2 = '<span class="tree-badge amb"' + reasonAttr2 + '>decide</span>';
+      badge2 = '<span class="tree-badge amb" title="No rule matched — click to decide">decide</span>';
     if (autoSt2 === "ambiguous" && S.userOverrides.has(node.id))
       badge2 = finalSt2 === "included"
-        ? '<span class="tree-badge user-inc">decided ✓</span>'
-        : '<span class="tree-badge user-exc">undecided ✗</span>';
+        ? '<span class="tree-badge user-inc" title="You chose to include this file">decided ✓</span>'
+        : '<span class="tree-badge user-exc" title="You chose to exclude this file">excluded ✗</span>';
     if (autoSt2 === "excluded" && S.userOverrides.has(node.id) && finalSt2 === "included")
-      badge2 = '<span class="tree-badge user-inc"' + reasonAttr2 + '>forced ✓</span>';
-    var newBadge = node.isNew ? '<span class="tree-badge tree-badge-new">new</span>' : "";
+      badge2 = '<span class="tree-badge user-inc" title="' + (node.autoExcludeReason ? 'Manually included — overrides rule: ' + escHtml(node.autoExcludeReason) : 'Manually included — overrides the exclusion rule') + '">forced ✓</span>';
+    var newBadge = node.isNew ? '<span class="tree-badge tree-badge-new" title="New file since last scan">new</span>' : "";
     row2.innerHTML =
       indentHTML +
       '<span class="tree-toggle tree-toggle-file"></span><span class="tree-checkbox ' +
@@ -2361,21 +2572,23 @@ function createTreeNode(node, depth, isLast, lineage) {
       "</span>";
     row2.addEventListener("click", function (e) {
       e.stopPropagation();
-      if (autoSt2 === "ambiguous") {
-        if (!S.userOverrides.has(node.id)) {
-          S.userOverrides.set(node.id, "included");
-        } else if (S.userOverrides.get(node.id) === "included") {
-          S.userOverrides.set(node.id, "excluded");
+      withHistory("Toggle " + node.name, function () {
+        if (autoSt2 === "ambiguous") {
+          if (!S.userOverrides.has(node.id)) {
+            S.userOverrides.set(node.id, "included");
+          } else if (S.userOverrides.get(node.id) === "included") {
+            S.userOverrides.set(node.id, "excluded");
+          } else {
+            S.userOverrides.delete(node.id);
+          }
         } else {
-          S.userOverrides.delete(node.id);
+          if (S.userOverrides.has(node.id)) {
+            S.userOverrides.delete(node.id);
+          } else {
+            S.userOverrides.set(node.id, getFinalStatus(node) === "included" ? "excluded" : "included");
+          }
         }
-      } else {
-        if (S.userOverrides.has(node.id)) {
-          S.userOverrides.delete(node.id);
-        } else {
-          S.userOverrides.set(node.id, getFinalStatus(node) === "included" ? "excluded" : "included");
-        }
-      }
+      });
       renderTree();
       renderCategoryChips();
       refreshFileCount();
@@ -2391,6 +2604,7 @@ function renderSummary() {
   var inc = 0,
     exc = 0,
     amb = 0,
+    ambDecided = 0,
     totalSize = 0;
   for (var i = 0; i < S.flatNodes.length; i++) {
     var n = S.flatNodes[i];
@@ -2400,7 +2614,10 @@ function renderSummary() {
       inc++;
       totalSize += n.size || 0;
     } else exc++;
-    if (n.autoStatus === "ambiguous") amb++;
+    if (n.autoStatus === "ambiguous") {
+      amb++;
+      if (S.userOverrides.has(n.id)) ambDecided++;
+    }
   }
   var tokens = Math.round(totalSize / 4);
   var tokStr = tokens > 1000 ? Math.round(tokens / 1000) + "k" : String(tokens);
@@ -2411,14 +2628,17 @@ function renderSummary() {
   setEl("p2-type", S.projectType || "—");
   setEl("p2-included", inc);
   setEl("p2-excluded", exc);
-  setEl("p2-ambiguous", amb);
+  var ambEl = document.getElementById("p2-ambiguous");
+  if (ambEl) ambEl.innerHTML = ambDecided + '<span class="p2si-val-sub">/' + amb + '</span>';
   setEl("p2-size", formatSize(totalSize));
   setEl("p2-tokens", tokStr);
 }
 
 window._includeAllFiles = function () {
-  S.flatNodes.forEach(function (n) {
-    if (n.type === "file") S.userOverrides.set(n.id, "included");
+  withHistory("Select all", function () {
+    S.flatNodes.forEach(function (n) {
+      if (n.type === "file") S.userOverrides.set(n.id, "included");
+    });
   });
   renderTree(); renderCategoryChips(); refreshFileCount(); renderSummary(); saveCurrentProjectSettings();
 };
@@ -2439,8 +2659,10 @@ window._toggleExpandAll = function (btn) {
   if (btn) btn.textContent = expand ? "⊟ Collapse all" : "⊞ Expand all";
 };
 window._excludeAllFiles = function () {
-  S.flatNodes.forEach(function (n) {
-    if (n.type === "file") S.userOverrides.set(n.id, "excluded");
+  withHistory("Unselect all", function () {
+    S.flatNodes.forEach(function (n) {
+      if (n.type === "file") S.userOverrides.set(n.id, "excluded");
+    });
   });
   renderTree(); renderCategoryChips(); refreshFileCount(); renderSummary(); saveCurrentProjectSettings();
 };
@@ -2496,17 +2718,22 @@ function renderCategoryChips() {
   }
   var html = "";
   // "New" chip — files created in the last smart update
-  var newCount = 0;
+  var newCount = 0, newIncluded = 0;
   for (var _ni = 0; _ni < S.flatNodes.length; _ni++) {
-    if (S.flatNodes[_ni].type === "file" && S.flatNodes[_ni].isNew) newCount++;
+    var _nn = S.flatNodes[_ni];
+    if (_nn.type === "file" && _nn.isNew) {
+      newCount++;
+      if (getFinalStatus(_nn) === "included") newIncluded++;
+    }
   }
   if (newCount > 0) {
     var newSel = S.selectedCategories.has("__new__");
+    var newPct = newCount > 0 ? Math.round((newIncluded / newCount) * 100) : 0;
     html +=
       '<div class="cat-item cat-new' + (newSel ? " cat-selected" : "") + '" data-cat="__new__">' +
       '<div class="cat-icon-col"><span class="cat-icon">✨</span><span class="cat-count">' + newCount + '</span></div>' +
       '<div class="cat-right"><span class="cat-name cat-new-name">New</span>' +
-      '<div class="cat-bar-wrap"><div class="cat-bar cat-new-bar"><div class="cat-bar-fill cat-new-bar-fill" style="width:100%"></div></div></div>' +
+      '<div class="cat-bar-wrap"><div class="cat-bar cat-new-bar"><div class="cat-bar-fill cat-new-bar-fill" style="width:' + newPct + '%"></div></div></div>' +
       '</div>' + makeBulkMenuHtml("__new__") + '</div>';
   }
   if (undecidedCount > 0) {
@@ -2574,14 +2801,22 @@ function renderCategoryChips() {
         return;
       }
       var target = action === "include" ? "included" : "excluded";
-      S.flatNodes.forEach(function (n) {
-        if (n.type !== "file") return;
-        var matches;
-        if (cat === "__unknown__") matches = n.autoStatus === "ambiguous";
-        else if (cat === "__new__") matches = n.isNew;
-        else matches = (n.categoryId || "unknown") === cat;
-        if (matches) S.userOverrides.set(n.id, target);
-      });
+      var catLabel = cat === "__unknown__" ? "Decide"
+                   : cat === "__new__" ? "New files"
+                   : cat;
+      withHistory(
+        (target === "included" ? "Select" : "Unselect") + " category " + catLabel,
+        function () {
+          S.flatNodes.forEach(function (n) {
+            if (n.type !== "file") return;
+            var matches;
+            if (cat === "__unknown__") matches = n.autoStatus === "ambiguous";
+            else if (cat === "__new__") matches = n.isNew;
+            else matches = (n.categoryId || "unknown") === cat;
+            if (matches) S.userOverrides.set(n.id, target);
+          });
+        }
+      );
       if (item) closeCatMenu(item);
       renderTree();
       renderCategoryChips();
@@ -2920,30 +3155,77 @@ function renderAdvContent() {
   c.innerHTML = h;
   c._items = items;
 
+  // Cross-list conflict helpers
+  var _OPP_CUSTOM = {
+    excludedExtensions: "includedExtensions",  includedExtensions: "excludedExtensions",
+    excludedFilenames:  "includedFilenames",   includedFilenames:  "excludedFilenames",
+    excludedFolders:    "includedFolders",     includedFolders:    "excludedFolders",
+  };
+  var _REMOVED_KEY = {
+    includedExtensions: "removedDefaultIncludedExtensions",
+    excludedExtensions: "removedDefaultExcludedExtensions",
+    includedFilenames:  "removedDefaultIncludedFilenames",
+    excludedFilenames:  "removedDefaultExcludedFilenames",
+    includedFolders:    "removedDefaultIncludedFolders",
+    excludedFolders:    "removedDefaultExcludedFolders",
+  };
+  var _RESTORE_TO_KEY = {
+    removedDefaultExcludedExtensions: "excludedExtensions",
+    removedDefaultIncludedExtensions: "includedExtensions",
+    removedDefaultExcludedFilenames:  "excludedFilenames",
+    removedDefaultIncludedFilenames:  "includedFilenames",
+    removedDefaultExcludedFolders:    "excludedFolders",
+    removedDefaultIncludedFolders:    "includedFolders",
+  };
+
+  function _showAdvAlert(msg) { showSnack(msg, 'warn'); }
+
+  function _crossConflict(v, targetKey) {
+    var dr = S.defaultRules || {};
+    var cr = S.customRules;
+    var oppKey = _OPP_CUSTOM[targetKey];
+    if (!oppKey) return null;
+    // conflict with custom opposite list
+    if ((cr[oppKey] || []).includes(v)) return oppKey;
+    // conflict with active default opposite list (not removed by user)
+    var oppDefaults = (dr[oppKey] || []);
+    var oppRemovedKey = _REMOVED_KEY[oppKey];
+    var oppRemoved = cr[oppRemovedKey] || [];
+    if (oppDefaults.includes(v) && !oppRemoved.includes(v)) return oppKey;
+    return null;
+  }
+
   c.querySelectorAll(".adv-item-remove").forEach(function (btn) {
     btn.addEventListener("click", function () {
       var idx = parseInt(btn.dataset.ai);
       var it = c._items[idx];
       if (!it) return;
+      // When restoring a removed default, check it won't conflict with the opposite custom list
       if (it.isRemoved) {
-        S.customRules[it.removeTo] = S.customRules[it.removeTo].filter(
-          function (n) {
-            return n !== it.name;
-          },
-        );
-      } else if (it.isDefault && it.removeTo) {
-        if (!S.customRules[it.removeTo]) S.customRules[it.removeTo] = [];
-        if (!S.customRules[it.removeTo].includes(it.name))
-          S.customRules[it.removeTo].push(it.name);
-      } else if (it.removeFrom) {
-        S.customRules[it.removeFrom] = S.customRules[it.removeFrom].filter(
-          function (n) {
-            return n !== it.name;
-          },
-        );
+        var restoredKey = _RESTORE_TO_KEY[it.removeTo];
+        var oppKey = restoredKey && _OPP_CUSTOM[restoredKey];
+        if (oppKey && (S.customRules[oppKey] || []).includes(it.name)) {
+          _showAdvAlert('"' + it.name + '" already exists in the opposite list — remove it there first.');
+          return;
+        }
       }
-      renderAdvContent();
-      rescanWithRules();
+      withHistory("Rule change: " + it.name, async function () {
+        if (it.isRemoved) {
+          S.customRules[it.removeTo] = S.customRules[it.removeTo].filter(
+            function (n) { return n !== it.name; },
+          );
+        } else if (it.isDefault && it.removeTo) {
+          if (!S.customRules[it.removeTo]) S.customRules[it.removeTo] = [];
+          if (!S.customRules[it.removeTo].includes(it.name))
+            S.customRules[it.removeTo].push(it.name);
+        } else if (it.removeFrom) {
+          S.customRules[it.removeFrom] = S.customRules[it.removeFrom].filter(
+            function (n) { return n !== it.name; },
+          );
+        }
+        renderAdvContent();
+        await rescanWithRules();
+      }, { needsRescan: true });
       saveCurrentProjectSettings();
     });
   });
@@ -2955,29 +3237,25 @@ function renderAdvContent() {
       var k = ab.dataset.ak;
       var v = ai.value.trim();
       if (!v) return;
+      // Same-list duplicate
       var allNames = c._items.map(function(it){ return it.name; });
       if (allNames.includes(v)) {
-        var existing = document.getElementById("adv-dup-msg");
-        if (existing) { existing._reset(); return; }
-        var msg = document.createElement("div");
-        msg.id = "adv-dup-msg";
-        msg.style.cssText = "color:var(--err);font-size:12px;margin-top:4px";
-        msg.textContent = '"' + v + '" already exists in this list.';
-        var addRow = document.querySelector(".adv-add-row");
-        addRow.insertAdjacentElement("afterend", msg);
-        var t = setTimeout(function(){ msg.remove(); }, 10000);
-        msg._reset = function(){
-          clearTimeout(t);
-          msg.remove();
-          t = setTimeout(function(){ msg.remove(); }, 10000);
-        };
+        _showAdvAlert('"' + v + '" already exists in this list.');
         return;
       }
-      if (!S.customRules[k]) S.customRules[k] = [];
-      S.customRules[k].push(v);
+      // Cross-list conflict
+      var conflictKey = _crossConflict(v, k);
+      if (conflictKey) {
+        _showAdvAlert('"' + v + '" already exists in the opposite list — remove it there first.');
+        return;
+      }
       ai.value = "";
-      renderAdvContent();
-      rescanWithRules();
+      withHistory("Add rule " + v, async function () {
+        if (!S.customRules[k]) S.customRules[k] = [];
+        S.customRules[k].push(v);
+        renderAdvContent();
+        await rescanWithRules();
+      }, { needsRescan: true });
       saveCurrentProjectSettings();
     }
     ab.addEventListener("click", _doAdd);
@@ -3247,6 +3525,9 @@ window._page2Continue = function () {
 // RESOLVE TABLE — flat list of undecided files with per-row buttons
 // ═══════════════════════════════════════════════════════════
 window._openResolveTable = function () {
+  // Snapshot the state at open. We commit one history entry on Apply ("Done"),
+  // or skip the commit entirely on Cancel (the modal reverts on its own).
+  History.begin();
   function computeAmbig() {
     var arr = S.flatNodes.filter(function (n) {
       return n.type === "file" && n.autoStatus === "ambiguous" && !S.userOverrides.has(n.id);
@@ -3622,6 +3903,9 @@ window._openResolveTable = function () {
   function close() {
     var el = document.getElementById("resolve-table-overlay");
     if (el) el.remove();
+    // Commit the modal session as a single undoable step. needsRescan=true if rules
+    // changed inside the modal so undo will trigger a rescan and restore tree shape.
+    History.commit("Resolve table", { needsRescan: appliedRules.length > 0 });
     renderTree();
     renderCategoryChips();
     refreshFileCount();
@@ -3662,7 +3946,8 @@ window._openResolveTable = function () {
     } finally {
       setBusy(false);
     }
-    // Close without persisting.
+    // Close without persisting — and discard the pending history snapshot.
+    History.abort();
     var el = document.getElementById("resolve-table-overlay");
     if (el) el.remove();
     renderTree();

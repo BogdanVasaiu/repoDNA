@@ -916,14 +916,13 @@ export function classifyNode(node, projectType, rules) {
     if (node.name === ".repodna") {
       return {
         autoStatus: "excluded",
-        autoExcludeReason: "Cartella interna repoDNA — esclusa sempre",
+        autoExcludeReason: "repoDNA internal folder — always excluded",
       };
     }
     if (rules.excludedFolders.has(node.name.toLowerCase())) {
       return {
         autoStatus: "excluded",
-        autoExcludeReason:
-          "Cartella generata/dipendenze — non utile per documentazione",
+        autoExcludeReason: "Generated folder or dependencies — skipped",
       };
     }
     if (rules.includedFolders.has(node.name.toLowerCase())) {
@@ -943,14 +942,12 @@ export function classifyNode(node, projectType, rules) {
       if (projectType === "RUST")
         return {
           autoStatus: "ambiguous",
-          autoExcludeReason:
-            "Cargo.lock — decidere in base al tipo di progetto",
+          autoExcludeReason: "Cargo.lock — check if needed for your project type",
         };
     }
     return {
       autoStatus: "excluded",
-      autoExcludeReason:
-        "File di lock o di sistema — non utile per documentazione",
+      autoExcludeReason: "— skipped",
     };
   }
 
@@ -958,7 +955,7 @@ export function classifyNode(node, projectType, rules) {
   if (ext && rules.excludedExtensions.has(ext)) {
     return {
       autoStatus: "excluded",
-      autoExcludeReason: "Estensione binaria/generata — non analizzabile",
+      autoExcludeReason: "Binary or generated file type — not analysable",
     };
   }
 
@@ -981,25 +978,25 @@ export function classifyNode(node, projectType, rules) {
     if (node.name.includes(".min."))
       return {
         autoStatus: "excluded",
-        autoExcludeReason: "File minificato — versione generata",
+        autoExcludeReason: "Minified file — generated output",
       };
     // Exception: .map
     if (ext === "map")
       return {
         autoStatus: "excluded",
-        autoExcludeReason: "Source map — file generato",
+        autoExcludeReason: "Source map — generated file",
       };
     // Exception: .generated. or .gen.
     if (node.name.includes(".generated.") || node.name.includes(".gen."))
       return {
         autoStatus: "excluded",
-        autoExcludeReason: "File generato automaticamente",
+        autoExcludeReason: "Auto-generated file",
       };
     // Exception: .env
     if (node.name === ".env")
       return {
         autoStatus: "excluded",
-        autoExcludeReason: "Contiene credenziali — non includere mai",
+        autoExcludeReason: "Contains credentials — never include",
       };
     return { autoStatus: "included", autoExcludeReason: null };
   }
@@ -1010,7 +1007,7 @@ export function classifyNode(node, projectType, rules) {
     if (prules.excludedFilenames?.some((f) => f.toLowerCase() === nameLower)) {
       return {
         autoStatus: "excluded",
-        autoExcludeReason: `File escluso per progetto ${projectType}`,
+        autoExcludeReason: `Excluded for ${projectType} project type`,
       };
     }
     if (
@@ -1029,13 +1026,13 @@ export function classifyNode(node, projectType, rules) {
   if (node.size > 2 * 1024 * 1024) {
     return {
       autoStatus: "excluded",
-      autoExcludeReason: "File molto grande (> 2MB)",
+      autoExcludeReason: "Very large file (> 2 MB) — skipped",
     };
   }
   if (node.size > 500 * 1024) {
     return {
       autoStatus: "ambiguous",
-      autoExcludeReason: "File grande (> 500KB) — verificare se utile",
+      autoExcludeReason: "Large file (> 500 KB) — check if needed",
     };
   }
 
@@ -1043,14 +1040,14 @@ export function classifyNode(node, projectType, rules) {
   if (node.isHidden) {
     return {
       autoStatus: "excluded",
-      autoExcludeReason: "File nascosto non riconosciuto",
+      autoExcludeReason: "Unrecognised hidden file",
     };
   }
 
   // Priority 9: Fallback
   return {
     autoStatus: "ambiguous",
-    autoExcludeReason: "Tipo di file non riconosciuto — verifica manualmente",
+    autoExcludeReason: "Unrecognised file type — check manually",
   };
 }
 

@@ -314,21 +314,17 @@ async function runAnalysis(config) {
   // Used to distinguish "actually deleted from filesystem" from "just unselected".
   var allNodeIds = new Set(allNodes.map(function (n) { return n.id; }));
 
-  // ── New-files detection: compare current all-file IDs against the previous scan's all-file list ──
+  // ── Step-03 snapshot filter ──────────────────────────────────────────────────
+  // The scan-tree endpoint now owns the new-files baseline (updated on every
+  // step-03 entry). Files added to disk AFTER the last step-03 scan are not in
+  // the snapshot and are excluded from this run — they will show as "new" the
+  // next time the user opens step 03.
   var _newFilesCacheFile = newFilesCachePath(config.projectPath);
-  var _prevNfData = loadNewFilesCache(_newFilesCacheFile);
-  var _prevAllFileIds = _prevNfData ? new Set(_prevNfData.allFiles || []) : null;
-  var _allCurrentFileIds = allNodes.map(function(n) { return n.id; });
-  // Only flag as "new" if there was a previous scan; on the very first run nothing is "new".
-  var _newlyAddedFileIds = (_prevAllFileIds !== null && _prevAllFileIds.size > 0)
-    ? _allCurrentFileIds.filter(function(id) { return !_prevAllFileIds.has(id); })
-    : [];
-
-  // Update the baseline NOW (at run start, not at completion) so that:
-  // - Refreshing step 03 still shows the same "new" badges (baseline unchanged until next run)
-  // - Even an interrupted run advances the baseline, so the next step-03 open shows
-  //   only files added *after* this run was started.
-  saveNewFilesCache(_newFilesCacheFile, _newlyAddedFileIds, _allCurrentFileIds);
+  var _step03Snapshot = loadNewFilesCache(_newFilesCacheFile);
+  if (_step03Snapshot && _step03Snapshot.allFiles && _step03Snapshot.allFiles.length > 0) {
+    var _snapshotSet = new Set(_step03Snapshot.allFiles);
+    allNodes = allNodes.filter(function(n) { return _snapshotSet.has(n.id); });
+  }
 
   var newHashes = {};
   for (var hi = 0; hi < filesToProcess.length; hi++) {
@@ -1392,14 +1388,19 @@ export function startServer() {
         scanCache[scanPath] = result;
         var newFileIds = [];
         try {
-          var _nfd = loadNewFilesCache(newFilesCachePath(scanPath));
+          var _nfCachePath = newFilesCachePath(scanPath);
+          var _nfd = loadNewFilesCache(_nfCachePath);
+          var _scannedIds = result.nodes
+            .filter(function(n) { return n.type === "file"; })
+            .map(function(n) { return n.id; });
           if (_nfd && _nfd.allFiles && _nfd.allFiles.length > 0) {
             var _prevAllSet = new Set(_nfd.allFiles);
-            var _scannedIds = result.nodes
-              .filter(function(n) { return n.type === "file"; })
-              .map(function(n) { return n.id; });
             newFileIds = _scannedIds.filter(function(id) { return !_prevAllSet.has(id); });
           }
+          // Step 03 owns the snapshot: update it now so the run knows exactly
+          // which files were visible when the user last reviewed the tree.
+          // Files added after this point are deferred to the next step-03 open.
+          saveNewFilesCache(_nfCachePath, newFileIds, _scannedIds);
         } catch (e) {}
         jsonOut({
           ok: true,

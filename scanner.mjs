@@ -127,7 +127,7 @@ export function scanProject(
         };
         if (isSymlink) {
           node.autoStatus = "excluded";
-          node.autoExcludeReason = "Symlink — potrebbe causare loop";
+          node.autoExcludeReason = "Symlink — could cause an infinite loop";
         } else {
           const cls = classifyNode(node, projectType, rules);
           node.autoStatus = cls.autoStatus;
