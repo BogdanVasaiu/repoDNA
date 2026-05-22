@@ -968,6 +968,7 @@
 
   let vpIdx     = 0;
   let vpPlaying = false;
+  let vpInitialized = false;
 
   const thumbOverlay = document.getElementById('vp-thumb-overlay');
   const iframe       = document.getElementById('vp-iframe');
@@ -1029,9 +1030,9 @@
       c.classList.toggle('active', ci === vpIdx);
     });
 
-    // Scroll active card into view
+    // Scroll active card into view (skip on first init so page doesn't jump to playlist)
     const activeCard = listEl.children[vpIdx];
-    if (activeCard) activeCard.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (activeCard && vpInitialized) activeCard.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 
     // Update nav buttons
     prevBtn.disabled = vpIdx === 0;
@@ -1068,6 +1069,7 @@
   // Init
   buildPlaylist();
   vpGoTo(0, false);
+  vpInitialized = true;
 
 })();
 

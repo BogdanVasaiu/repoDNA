@@ -57,6 +57,7 @@ var AGENT_TARGETS_SERVER = {
 
 var __dirname = dirname(fileURLToPath(import.meta.url));
 var PUBLIC_DIR = join(__dirname, "public");
+var DOCS_DIR = join(__dirname, "docs");
 var PORT = 3741;
 var pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf-8"));
 var REPO_NAME = "repoDNA";
@@ -1081,27 +1082,38 @@ function saveResultCache(resultCacheFile, events, prevResults, presentFileIds, n
 }
 
 // ─── STATIC FILE SERVER ──────────────────────────────────
-function serveStatic(filePath, res) {
-  var fullPath = join(PUBLIC_DIR, filePath);
-  if (!existsSync(fullPath)) {
+var STATIC_TYPES = {
+  ".html": "text/html",
+  ".css": "text/css",
+  ".js": "application/javascript",
+  ".mjs": "application/javascript",
+  ".json": "application/json",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+};
+
+function serveFromDir(baseDir, relPath, res) {
+  var fullPath = join(baseDir, relPath);
+  if (!fullPath.startsWith(baseDir) || !existsSync(fullPath)) {
     res.writeHead(404);
     res.end("Not found");
     return;
   }
   var ext = extname(fullPath);
-  var types = {
-    ".html": "text/html",
-    ".css": "text/css",
-    ".js": "application/javascript",
-    ".mjs": "application/javascript",
-    ".json": "application/json",
-    ".svg": "image/svg+xml",
-    ".png": "image/png",
-    ".ico": "image/x-icon",
-  };
-  var contentType = types[ext] || "application/octet-stream";
+  var contentType = STATIC_TYPES[ext] || "application/octet-stream";
   res.writeHead(200, { "Content-Type": contentType });
   res.end(readFileSync(fullPath));
+}
+
+function serveStatic(filePath, res) {
+  serveFromDir(PUBLIC_DIR, filePath, res);
 }
 
 // ─── HTTP SERVER ──────────────────────────────────────────
@@ -1769,6 +1781,23 @@ export function startServer() {
         return;
       }
       
+      // ── Landing page (bundled offline copy of repodna.com from /docs)
+      if (url.pathname === "/landing") {
+        res.writeHead(302, { Location: "/landing/" });
+        res.end();
+        return;
+      }
+      if (url.pathname === "/landing/") {
+        var landingHtml = readFileSync(join(DOCS_DIR, "index.html"), "utf-8");
+        res.writeHead(200, { "Content-Type": "text/html" });
+        res.end(landingHtml);
+        return;
+      }
+      if (url.pathname.startsWith("/landing/")) {
+        serveFromDir(DOCS_DIR, url.pathname.slice("/landing/".length), res);
+        return;
+      }
+
       // ── Static files
       var filePath =
         url.pathname === "/" ? "index.html" : url.pathname.slice(1);
