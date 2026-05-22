@@ -4270,12 +4270,32 @@ function _showApiErrorSnackbar(isAuth) {
   _snackbarApiErrorTimer = true;
 }
 
+var _snackbarOllamaDownTimer = null;
+function _showOllamaDownSnackbar() {
+  if (_snackbarOllamaDownTimer) return;
+  var container = document.getElementById("snackbar-container");
+  if (!container) return;
+  var sb = document.createElement("div");
+  sb.className = "snackbar snackbar-warn";
+  sb.innerHTML =
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' +
+    '<span>Ollama isn\'t reachable — start the Ollama app, then retry the failed files</span>' +
+    '<button class="snackbar-close" onclick="this.closest(\'.snackbar\').remove();_snackbarOllamaDownTimer=null" title="Dismiss">✕</button>';
+  container.appendChild(sb);
+  _snackbarOllamaDownTimer = true;
+}
+
 function appendLog(d) {
   if (d.type === "warn" && d.text) {
     if (d.text.indexOf("HTTP 401") !== -1 || d.text.indexOf("unauthorized") !== -1) {
       _showApiErrorSnackbar(true);
     } else if (d.text.indexOf("Both Ollama APIs failed") !== -1) {
       _showApiErrorSnackbar(false);
+    } else if (
+      d.text.indexOf("fetch failed") !== -1 ||
+      d.text.indexOf("ECONNREFUSED") !== -1
+    ) {
+      _showOllamaDownSnackbar();
     }
   }
   var list = document.getElementById("log-list");
