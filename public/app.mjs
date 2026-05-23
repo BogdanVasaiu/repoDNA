@@ -3369,7 +3369,7 @@ function renderAdvContent() {
   var ab = document.getElementById("adv-add-btn");
   var ai = document.getElementById("adv-add-input");
   if (ab) {
-    function _doAdd() {
+    async function _doAdd() {
       var k = ab.dataset.ak;
       var v = ai.value.trim();
       if (!v) return;
@@ -3385,10 +3385,27 @@ function renderAdvContent() {
         _showAdvAlert('"' + v + '" already exists in the opposite list — remove it there first.');
         return;
       }
+
+      // Detect user-override conflicts: files the user manually flipped that
+      // the new rule would auto-flip in the opposite direction. Without this
+      // popup the rule silently turns them into "forced" or leaves their
+      // override in place, which can surprise.
+      var conflicts = _findRuleConflicts(k, v);
+      var resolution = "apply"; // when there's no conflict, just apply.
+      if (conflicts.length > 0) {
+        resolution = await _showRuleConflictModal(k, v, conflicts);
+        if (resolution === "cancel" || resolution === "view") return;
+      }
+
       ai.value = "";
       withHistory("Add rule " + v, async function () {
         if (!S.customRules[k]) S.customRules[k] = [];
         S.customRules[k].push(v);
+        if (resolution === "apply") {
+          for (var ci = 0; ci < conflicts.length; ci++) {
+            S.userOverrides.delete(conflicts[ci].id);
+          }
+        }
         renderAdvContent();
         await rescanWithRules();
       }, { needsRescan: true });
@@ -3397,6 +3414,119 @@ function renderAdvContent() {
     ab.addEventListener("click", _doAdd);
     ai.addEventListener("keydown", function(e){ if (e.key === "Enter") _doAdd(); });
   }
+}
+
+// Find files in the current tree whose user override conflicts with a rule
+// the user is about to add. "Conflict" = file matches the new rule AND has an
+// override pointing the opposite way (manually-included file matched by an
+// exclusion rule, manually-excluded file matched by an inclusion rule).
+// Only extension/filename rules are checked — folder rules just remove files
+// from the tree, no visible conflict to resolve.
+function _findRuleConflicts(ruleKey, value) {
+  var lower = (value || "").toLowerCase().replace(/^\./, "");
+  if (!lower) return [];
+  var isExclude = /^excluded/.test(ruleKey);
+  var conflictOverride = isExclude ? "included" : "excluded";
+  var conflicts = [];
+  for (var i = 0; i < S.flatNodes.length; i++) {
+    var n = S.flatNodes[i];
+    if (n.type !== "file") continue;
+    if (!S.userOverrides.has(n.id)) continue;
+    if (S.userOverrides.get(n.id) !== conflictOverride) continue;
+    var name = (n.name || "").toLowerCase();
+    var ext = (n.extension || "").toLowerCase();
+    var matches = false;
+    if (ruleKey === "excludedExtensions" || ruleKey === "includedExtensions") {
+      matches = ext === lower;
+    } else if (ruleKey === "excludedFilenames" || ruleKey === "includedFilenames") {
+      matches = name === lower;
+    } else if (ruleKey === "excludedFolders" || ruleKey === "includedFolders") {
+      var parts = (n.id || "").toLowerCase().split(/[\\\/]/);
+      matches = parts.includes(lower);
+    }
+    if (matches) conflicts.push(n);
+  }
+  return conflicts;
+}
+
+function _showRuleConflictModal(ruleKey, value, conflicts) {
+  return new Promise(function (resolve) {
+    var isExclude = /^excluded/.test(ruleKey);
+    var cnt = conflicts.length;
+    var ruleLabel = ({
+      excludedExtensions: "Excluded Extensions",
+      excludedFilenames: "Excluded Files",
+      excludedFolders: "Excluded Folders",
+      includedExtensions: "Included Extensions",
+      includedFilenames: "Included Files",
+      includedFolders: "Included Folders",
+    })[ruleKey] || ruleKey;
+    var subject = isExclude
+      ? cnt + " file" + (cnt > 1 ? "s are" : " is") + " currently <b>selected</b> but match this exclusion rule."
+      : cnt + " file" + (cnt > 1 ? "s are" : " is") + " currently <b>unselected</b> but would be matched by this inclusion rule.";
+    // "(force)" wording is reserved for the case that actually surfaces the
+    // "forced ✓" badge in the tree — auto-excluded files kept manually included.
+    // For the inverse (auto-included files kept manually excluded) there's no
+    // forced badge, so we just say "Keep unselected".
+    var btnKeep = isExclude ? "Keep selected (force)" : "Keep unselected";
+    var btnApply = isExclude ? "Unselect them too" : "Select them too";
+
+    var overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.id = "rule-conflict-overlay";
+    overlay.innerHTML =
+      '<div class="modal unk-modal" style="width:540px">' +
+        '<div class="modal-head">' +
+          '<span>⚠️ Rule conflict</span>' +
+          '<button id="rc-close-x">✕</button>' +
+        '</div>' +
+        '<div class="unk-modal-body">' +
+          '<div class="unk-modal-count">' +
+            '<span class="unk-count-num">' + cnt + '</span> file' + (cnt > 1 ? 's' : '') + ' in conflict' +
+          '</div>' +
+          '<p class="unk-modal-hint">' +
+            'Adding <b>"' + escHtml(value) + '"</b> to <b>' + ruleLabel + '</b> — ' + subject +
+          '</p>' +
+        '</div>' +
+        '<div class="modal-foot unk-modal-foot" style="flex-wrap:nowrap">' +
+          '<button class="btn btn-sm btn-ghost" id="rc-btn-view">🔍 Review first</button>' +
+          '<div class="unk-spacer"></div>' +
+          '<button class="btn btn-sm btn-ghost" id="rc-btn-force">' + btnKeep + '</button>' +
+          '<button class="btn btn-sm btn-primary" id="rc-btn-apply">' + btnApply + '</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    function close(result) {
+      var el = document.getElementById("rule-conflict-overlay");
+      if (el) el.remove();
+      resolve(result);
+    }
+    // Backdrop click and ✕ dismiss without applying — same as "view" cancellation
+    // (no rule added). The footer no longer offers an explicit Cancel button.
+    overlay.addEventListener("click", function (e) { if (e.target === overlay) close("cancel"); });
+    document.getElementById("rc-close-x").addEventListener("click", function () { close("cancel"); });
+    document.getElementById("rc-btn-force").addEventListener("click", function () { close("force"); });
+    document.getElementById("rc-btn-apply").addEventListener("click", function () { close("apply"); });
+    document.getElementById("rc-btn-view").addEventListener("click", function () {
+      // Set tree search to the rule value and switch filter so the conflicting
+      // files are immediately visible. Excluded rule → user wants to see what's
+      // currently selected that'll be hit; included rule → what's unselected.
+      S.treeSearchQuery = value;
+      S.treeFilter = isExclude ? "included" : "excluded";
+      var searchInput = document.getElementById("tree-search-input");
+      if (searchInput) searchInput.value = value;
+      document.querySelectorAll(".tree-filter-group .tree-btn").forEach(function (b) {
+        b.classList.remove("active");
+      });
+      var targetBtn = document.querySelector(
+        ".tree-filter-group .tree-btn." + (isExclude ? "flt-inc" : "flt-exc"),
+      );
+      if (targetBtn) targetBtn.classList.add("active");
+      renderTree();
+      close("view");
+    });
+  });
 }
 async function rescanWithRules() {
   var treeEl = document.getElementById("file-tree");
