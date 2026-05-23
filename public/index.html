@@ -313,23 +313,42 @@
               <div class="card-title">Custom Rules
                 <span class="mcat-info-wrap">
                   <button class="mcat-info-btn">i</button>
-                  <span class="mcat-tooltip" style="width:278px">
-                    <strong style="color:var(--t1);display:block;margin-bottom:8px">Custom Rules</strong>
-                    Rules intercept files, folders, and extensions based on your project type — deciding what should and shouldn't go into the context file.
-                    <span style="display:block;border-top:1px solid var(--b1);margin:8px 0"></span>
-                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
-                      <span style="flex-shrink:0;margin-top:3px;width:2px;height:28px;border-radius:2px;background:var(--err)"></span>
-                      <span><strong style="color:var(--err)">Excluded by default</strong> — folders, files, and extensions the system considers useless. You can still force any of them in by clicking directly in the tree.</span>
-                    </span>
-                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
-                      <span style="flex-shrink:0;margin-top:3px;width:2px;height:22px;border-radius:2px;background:var(--a)"></span>
-                      <span><strong style="color:var(--a)">Included by default</strong> — known files and extensions that are usually meaningful for a context file.</span>
-                    </span>
-                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:9px">
-                      <span style="flex-shrink:0;margin-top:3px;width:2px;height:22px;border-radius:2px;background:var(--amb)"></span>
-                      <span><strong style="color:var(--amb)">Unknown</strong> — no rule matched. Decide manually whether to keep it, or write your own rule to handle it automatically.</span>
-                    </span>
-                    <span style="color:var(--t3);font-size:10px;display:block;border-top:1px solid var(--b2);padding-top:7px">Add your own rules to fine-tune what gets included for your specific project.</span>
+                  <span class="mcat-tooltip" style="width:296px">
+                    <strong style="color:var(--t1);display:block;margin-bottom:5px">Custom Rules</strong>
+                    <span class="tt-intro">Rules intercept files, folders, and extensions based on your project type — deciding what should and shouldn't go into the context file.</span>
+
+                    <div class="tt-entry">
+                      <div class="tt-entry-label tt-label-exc">Excluded</div>
+                      <div class="tt-entry-desc">Auto-filtered out. Click the badge to force it in.</div>
+                      <div class="tt-entry-badges">
+                        <span class="tree-badge auto-exc">excluded</span>
+                        <span class="tt-badge-arrow">→</span>
+                        <span class="tree-badge user-inc">forced ✓</span>
+                      </div>
+                    </div>
+
+                    <div class="tt-entry">
+                      <div class="tt-entry-label tt-label-inc">Included</div>
+                      <div class="tt-entry-desc">Known file type — auto-checked, no badge shown.</div>
+                      <div class="tt-entry-badges">
+                        <span class="tt-state-check">✓</span>
+                        <span class="tt-no-badge">auto-checked · no badge</span>
+                      </div>
+                    </div>
+
+                    <div class="tt-entry tt-entry-last">
+                      <div class="tt-entry-label tt-label-amb">To decide</div>
+                      <div class="tt-entry-desc">No rule matched — decide manually or write a rule to automate it.</div>
+                      <div class="tt-entry-badges">
+                        <span class="tree-badge amb">decide</span>
+                        <span class="tt-badge-arrow">→</span>
+                        <span class="tree-badge user-inc">decided ✓</span>
+                        <span class="tt-badge-sep">/</span>
+                        <span class="tree-badge user-exc">decided ✗</span>
+                      </div>
+                    </div>
+
+                    <span class="tt-footer">Add your own rules to fine-tune what gets included for your project.</span>
                   </span>
                 </span>
               </div>

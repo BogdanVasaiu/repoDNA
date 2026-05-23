@@ -2471,8 +2471,17 @@ function createTreeNode(node, depth, isLast, lineage) {
         finalSt === "included"
           ? '<span class="tree-badge user-inc" title="Manually included">manual</span>'
           : '<span class="tree-badge user-exc" title="Manually excluded">manual</span>';
-    var dirBtnsHTML =
-      '<span class="dir-inline-btns"><button class="dir-btn dir-btn-inc" data-da="include">☑ Select all</button><button class="dir-btn dir-btn-exc" data-da="exclude">☐ Unselect all</button></span>';
+    // Auto-excluded folders aren't walked by the scanner (children: []), so
+    // Select/Unselect can't act on anything. Replace them with a hint pointing
+    // the user to Custom Rules, which is where exclusion lives anyway. The hint
+    // renders BEFORE the badge so it sits to the left of "excluded" instead of
+    // competing with it for the right edge.
+    var dirBtnsHTML = hasChildren
+      ? '<span class="dir-inline-btns"><button class="dir-btn dir-btn-inc" data-da="include">☑ Select all</button><button class="dir-btn dir-btn-exc" data-da="exclude">☐ Unselect all</button></span>'
+      : '';
+    var emptyHintHTML = (!hasChildren && isAutoExcluded)
+      ? '<span class="dir-empty-hint" title="This folder is excluded by a classifier rule. Remove the rule in Custom Rules → Excluded Folders to include it.">manage in Custom Rules</span>'
+      : '';
     row.innerHTML =
       indentHTML +
       '<span class="tree-toggle">' +
@@ -2488,6 +2497,7 @@ function createTreeNode(node, depth, isLast, lineage) {
       '">' +
       escHtml(node.name) +
       '</span><span class="tree-meta">' +
+      emptyHintHTML +
       badge +
       dirBtnsHTML +
       "</span>";
@@ -2609,7 +2619,7 @@ function createTreeNode(node, depth, isLast, lineage) {
     if (autoSt2 === "ambiguous" && S.userOverrides.has(node.id))
       badge2 = finalSt2 === "included"
         ? '<span class="tree-badge user-inc" title="You chose to include this file">decided ✓</span>'
-        : '<span class="tree-badge user-exc" title="You chose to exclude this file">excluded ✗</span>';
+        : '<span class="tree-badge user-exc" title="You chose to exclude this file">decided ✗</span>';
     if (autoSt2 === "excluded" && S.userOverrides.has(node.id) && finalSt2 === "included")
       badge2 = '<span class="tree-badge user-inc" title="' + (node.autoExcludeReason ? 'Manually included — overrides rule: ' + escHtml(node.autoExcludeReason) : 'Manually included — overrides the exclusion rule') + '">forced ✓</span>';
     var newBadge = node.isNew ? '<span class="tree-badge tree-badge-new" title="New file since last scan">new</span>' : "";
@@ -2802,7 +2812,7 @@ function renderCategoryChips() {
     html +=
       '<div class="cat-item cat-undecided' + (undSel ? " cat-selected" : "") + '" data-cat="__unknown__">' +
       '<div class="cat-icon-col"><span class="cat-icon">⚠️</span><span class="cat-count">' + undecidedCount + '</span></div>' +
-      '<div class="cat-right"><span class="cat-name">Unknown</span></div>' +
+      '<div class="cat-right"><span class="cat-name">To decide</span></div>' +
       makeBulkMenuHtml("__unknown__") +
       '</div>';
   }
@@ -2965,6 +2975,24 @@ function applyTreeFilters() {
     return true;
   }
 
+  // For directories with no visible descendants — typically auto-excluded folders
+  // (node_modules, .git, agents/ when excluded) that the scanner doesn't walk into
+  // so children is [] — fall back to evaluating the folder on its own status.
+  // Without this, those folders disappear from the tree entirely.
+  function ownDirMatches(nd) {
+    if (q) {
+      var name = nd.name.toLowerCase();
+      var path = (nd.id || "").toLowerCase();
+      if (!name.includes(q) && !path.includes(q)) return false;
+    }
+    if (S.treeFilter === "all") return true;
+    if (S.treeFilter === "ambiguous") return false;
+    var fs = getDirFinalStatus(nd);
+    if (S.treeFilter === "included") return fs === "included";
+    if (S.treeFilter === "excluded") return fs === "excluded";
+    return true;
+  }
+
   var visibility = {};
   function compute(nd) {
     var anyChild = false;
@@ -2973,7 +3001,12 @@ function applyTreeFilters() {
         if (compute(nd.children[i])) anyChild = true;
       }
     }
-    var visible = nd.type === "directory" ? anyChild : ownMatches(nd);
+    var visible;
+    if (nd.type === "directory") {
+      visible = anyChild || ownDirMatches(nd);
+    } else {
+      visible = ownMatches(nd);
+    }
     visibility[nd.id] = visible;
     return visible;
   }
@@ -3543,7 +3576,7 @@ window._page2Continue = function () {
   overlay.innerHTML =
     '<div class="modal unk-modal">' +
       '<div class="modal-head">' +
-        '<span>⚠️ Unknown files</span>' +
+        '<span>⚠️ Files to decide</span>' +
         '<button id="unk-close-x">✕</button>' +
       '</div>' +
       '<div class="unk-modal-body">' +
