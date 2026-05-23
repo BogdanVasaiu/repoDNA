@@ -117,7 +117,26 @@
         <!-- YOUR INSTALLED MODELS -->
         <div class="card" id="installed-models-card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <div class="card-title" style="margin-bottom:0">Your Installed Models</div>
+            <div class="card-title" style="margin-bottom:0;display:flex;align-items:center">Your Installed Models
+              <span class="mcat-info-wrap">
+                <button class="mcat-info-btn">i</button>
+                <span class="mcat-tooltip" style="width:310px">
+                  <strong style="color:var(--t1);display:block;margin-bottom:6px">About this list</strong>
+                  Every model that's currently pulled into your Ollama instance, plus any Ollama Cloud models available to your account.
+                  <span style="display:block;border-top:1px solid var(--b2);margin:8px 0;padding-top:6px;color:var(--t2);font-weight:600;font-size:11px">How <code style="color:var(--t1)">tok/s</code> is calculated</span>
+                  <span style="display:block;margin-bottom:6px">It's the average <strong style="color:var(--t2)">output tokens per second</strong> across your past runs with that model — higher is faster.</span>
+                  <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:5px">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:3px;color:var(--t2)"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                    <span><strong style="color:var(--t2)">Local</strong> — measured from Ollama's own <code>eval_count / eval_duration</code> stats. Pure model speed, no network involved.</span>
+                  </span>
+                  <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;margin-top:3px;color:var(--t2)"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                    <span><strong style="color:var(--t2)">Cloud</strong> — measured against wall-clock time, so it <em>includes network latency</em>. Numbers are realistic for you but not directly comparable to the local figure.</span>
+                  </span>
+                  <span style="color:var(--t3);font-size:10px;display:block;border-top:1px solid var(--b2);padding-top:7px">A dash (<code>—</code>) means you haven't run that model yet, so there's no average to show.</span>
+                </span>
+              </span>
+            </div>
             <button class="btn-inline btn-attention" id="imodel-add-header-btn" onclick="window._showModelCatalog()">+ Add new model</button>
           </div>
           <div id="user-models-section"></div>
@@ -125,9 +144,47 @@
 
         <!-- SUGGESTED MODELS TABLE -->
         <div class="card" id="models-reference-card" style="margin-top:16px;display:none">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;gap:20px">
             <div>
-              <div class="card-title" style="margin-bottom:2px">Suggested Models</div>
+              <div class="card-title" style="margin-bottom:2px;display:flex;align-items:center">Suggested Models
+                <span class="mcat-info-wrap">
+                  <button class="mcat-info-btn">i</button>
+                  <span class="mcat-tooltip" style="width:320px">
+                    <strong style="color:var(--t1);display:block;margin-bottom:6px">About this catalog</strong>
+                    A hand-picked shortlist of models that work well for code analysis. Use the <strong style="color:var(--t2)">Local</strong> / <strong style="color:var(--t2)">Cloud</strong> tabs above to switch between models you can run on your machine and ones hosted on Ollama Cloud.
+                    <span style="display:block;background:rgba(32,227,160,.08);border:1px solid rgba(32,227,160,.28);border-radius:6px;padding:8px 10px;margin-top:10px;color:var(--t2);font-size:11.5px;line-height:1.5">
+                      <strong style="color:var(--a);display:block;margin-bottom:3px;font-size:12px">⬇ How to install a model</strong>
+                      Hit the <strong style="color:var(--t1)">⬇ Pull</strong> button on any row — repoDNA opens a popup with the exact <code style="color:var(--t1)">ollama pull &lt;model&gt;</code> command. Copy it, run it in your terminal, and the model shows up in <strong style="color:var(--t1)">Your Installed Models</strong> above.
+                    </span>
+                    <span style="display:block;border-top:1px solid var(--b2);margin:8px 0;padding-top:6px;color:var(--t2);font-weight:600;font-size:11px">Reading the columns</span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">
+                      <span style="flex-shrink:0;margin-top:3px;width:2px;height:18px;border-radius:2px;background:var(--a)"></span>
+                      <span><strong style="color:var(--t2)">Size</strong> — disk footprint of the model weights.</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">
+                      <span style="flex-shrink:0;margin-top:3px;width:2px;height:18px;border-radius:2px;background:var(--a)"></span>
+                      <span><strong style="color:var(--t2)">VRAM</strong> (local only) — minimum GPU memory recommended to run it smoothly. If you're short, the model spills to RAM and slows down.</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">
+                      <span style="flex-shrink:0;margin-top:3px;width:2px;height:18px;border-radius:2px;background:var(--a)"></span>
+                      <span><strong style="color:var(--t2)">Context</strong> — max tokens the model can hold in one prompt. Larger = it can see more of your file at once.</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">
+                      <span style="flex-shrink:0;margin-top:3px;width:2px;height:18px;border-radius:2px;background:var(--a)"></span>
+                      <span><strong style="color:var(--t2)">Quality</strong> — how good the output tends to be on code-analysis tasks (our subjective rating).</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
+                      <span style="flex-shrink:0;margin-top:3px;width:2px;height:18px;border-radius:2px;background:var(--a)"></span>
+                      <span><strong style="color:var(--t2)">Speed</strong> — expected generation speed. Local depends on your hardware; cloud depends on your connection.</span>
+                    </span>
+                    <span style="display:block;border-top:1px solid var(--b2);padding-top:7px">
+                      <span class="mcat-badge flagship" style="margin-right:5px">flagship</span> top pick across the board.
+                      <br style="line-height:1.8">
+                      <span class="mcat-badge recommended" style="margin-right:5px;margin-top:4px;display:inline-block">recommended</span> solid balance for most projects.
+                    </span>
+                  </span>
+                </span>
+              </div>
               <div class="hint">A curated list of models recommended for code analysis — compare specs and pick the best fit for your project.</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px">

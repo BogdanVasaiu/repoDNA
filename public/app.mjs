@@ -700,12 +700,19 @@ function connectSSE() {
       else if (i < page) p.classList.add("done");
     });
     S.currentPage = page;
-    // If restored to page 2 and we have a project path but no tree, reload it
-    if (page === 2 && S.projectPath && S.treeData.length === 0) {
-      loadFileTree();
-    }
-    // If restored to page 4, rebuild review cards (project data may already be loaded)
-    if (page === 4 && S.projectPath) {
+    // Steps 2+ all depend on a scanned tree (projectType, file counts, summary).
+    // On refresh from step 3 or 4 the tree was never loaded, so the review showed
+    // "UNKNOWN" / 0 files. Load it for any page that needs it, then rebuild the
+    // review once the scan finishes so projectType and file count are accurate.
+    if (page >= 2 && S.projectPath && S.treeData.length === 0) {
+      var _treeReady = loadFileTree();
+      if (page === 4) {
+        Promise.resolve(_treeReady).then(function () {
+          buildReview();
+          buildAgentSelector();
+        });
+      }
+    } else if (page === 4 && S.projectPath) {
       buildReview();
       buildAgentSelector();
     }
@@ -1784,7 +1791,7 @@ function renderUserModelsSection() {
     var m = sortedModels[i];
     var sizeLabel = m.isCloud ? 'cloud' : _fmtModelSize(m.size);
     var stat = stats[m.name];
-    var speed = stat && stat.avg > 0 ? '~' + Math.round(stat.avg) + ' tok/s' : '—';
+    var speed = stat && stat.avg > 0 ? '~' + Math.round(stat.avg) : '—';
     html +=
       '<div class="imodel-row">' +
         '<span class="imodel-type-icon ' + (m.isCloud ? 'imodel-cloud' : 'imodel-local') + '">' + (m.isCloud ? cloudSvg : localSvg) + '</span>' +
@@ -2159,6 +2166,11 @@ window._browsePath = async function () {
     if (d.ok && d.path) {
       document.getElementById("project-path").value = d.path;
       await onPathChange(d.path);
+      // Skip the extra "+ Add" click — browsing a folder already signals intent
+      // to add it. Manual paste flow still goes through the Add button.
+      if (_pathValidState === "valid") {
+        await window._addProject();
+      }
     }
   } catch (e) {
     if (e.name !== "AbortError") {
@@ -4926,19 +4938,11 @@ window.addEventListener("DOMContentLoaded", async function () {
       document.getElementById("ollama-host").value = cfg.ollamaHost;
       S.ollamaHost = cfg.ollamaHost;
     }
-    // Restore last project and load all its settings via selectProject
+    // Restore last project and load all its settings via selectProject.
+    // The actual page is restored later by the `ui_page` SSE event, which also
+    // triggers tree loading and review rebuilds — keep this block minimal.
     if (cfg.projectPath) {
       await selectProject(cfg.projectPath);
-      // If the saved page was step 2, pre-load the tree so it's ready
-      if (S.currentPage === 2 && S.treeData.length === 0) {
-        loadFileTree();
-      }
-      // If the saved page was step 4 (Review & Run), rebuild the summary cards now
-      // that all project settings have been loaded — this fixes the blank-on-refresh bug
-      if (S.currentPage === 4) {
-        buildReview();
-        buildAgentSelector();
-      }
     }
   } catch {}
 
