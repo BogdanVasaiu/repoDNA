@@ -444,7 +444,20 @@
           <div id="review-content"></div>
         </div>
         <div class="card">
-          <div class="card-title">Agent Context File Type</div>
+          <div class="card-title">Agent Context File Type
+            <span class="mcat-info-wrap">
+              <button class="mcat-info-btn">i</button>
+              <span class="mcat-tooltip" style="width:310px">
+                <strong style="color:var(--t1);display:block;margin-bottom:6px">Agent target</strong>
+                Picks which AI coding CLI the context file is written for. Each agent has its own conventional filename and location in your project — for example <code style="color:var(--t2)">CLAUDE.md</code> for Claude Code, <code style="color:var(--t2)">AGENTS.md</code> for Codex, <code style="color:var(--t2)">.cursorrules</code> for Cursor, and so on.
+                <span style="display:block;border-top:1px solid var(--b2);margin:8px 0"></span>
+                <span style="display:block;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:6px;padding:7px 9px;color:var(--t2);font-size:11px;line-height:1.5">
+                  <strong style="color:var(--amb);display:block;margin-bottom:3px">⚠ Switching agents deletes the old file</strong>
+                  If you change the agent target between runs, repoDNA <strong style="color:var(--t1)">removes the previous context file</strong> (e.g. <code style="color:var(--t1)">CLAUDE.md</code>) before writing the new one (e.g. <code style="color:var(--t1)">AGENTS.md</code>) — so your project doesn't end up with stale duplicates from different agents.
+                </span>
+              </span>
+            </span>
+          </div>
           <div style="color:var(--t3);font-size:12px;margin-bottom:14px;line-height:1.6">
             Choose which AI coding CLI you use — repoDNA will generate the correct context file and save it directly in your project.
           </div>
@@ -471,6 +484,19 @@
         <div class="progress-label" id="progress-label">Waiting…</div>
         <div class="current-file-label" id="current-file"></div>
         <div class="spacer"></div>
+        <span class="mcat-info-wrap" style="margin-right:2px">
+          <button class="mcat-info-btn">i</button>
+          <span class="mcat-tooltip" style="width:310px">
+            <strong style="color:var(--t1);display:block;margin-bottom:6px">How the run works</strong>
+            Files are analyzed one by one. Once the run finishes — or you stop it — the context file is written directly into your project.
+            <span style="display:block;border-top:1px solid var(--b2);margin:8px 0"></span>
+            <span style="display:block;margin-bottom:8px">Each file's result opens as a <strong style="color:var(--t2)">tab</strong> on the right. From there you can <strong style="color:var(--t2)">retry</strong> the analysis for that file, or <strong style="color:var(--t2)">edit</strong> the result in place.</span>
+            <span style="display:block;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:6px;padding:7px 9px;color:var(--t2);font-size:11px;line-height:1.5">
+              <strong style="color:var(--amb);display:block;margin-bottom:3px">⚠ Don't edit the generated file in your project</strong>
+              With <strong style="color:var(--t1)">Smart Update</strong> on, the next run continues from the <strong style="color:var(--t1)">cached copy</strong> — any edits you make to the file on disk will be <strong style="color:var(--t1)">overwritten</strong>. Make changes here in the UI instead.
+            </span>
+          </span>
+        </span>
         <div class="stat-chips">
           <div class="stat-chip"><div class="stat-val green" id="s-progress">0/0</div><div class="stat-lbl">files</div></div>
           <span id="s-done" style="display:none">0</span>
@@ -491,7 +517,66 @@
       <div id="dash-body">
         <div id="log-panel">
           <div id="files-subpanel">
-            <div class="panel-head"><span class="panel-head-title">Files</span><span class="panel-head-badge" id="file-run-count"></span></div>
+            <div class="panel-head">
+              <span class="panel-head-title">
+                Files
+                <span class="mcat-info-wrap">
+                  <button class="mcat-info-btn">i</button>
+                  <span class="mcat-tooltip" style="width:300px">
+                    <strong style="color:var(--t1);display:block;margin-bottom:6px">Files panel</strong>
+                    A live view of every file in this run — similar to GitHub's <em style="color:var(--t2)">Changed Files</em> tab. The change badge tells you <em style="color:var(--t2)">why</em> the file is here (new, modified, retried…) and the status icon tells you <em style="color:var(--t2)">where</em> it is in the run (pending, running, done, failed).
+                    <span style="display:block;border-top:1px solid var(--b2);margin:8px 0;padding-top:6px;color:var(--t2);font-weight:600;font-size:11px">Change badges</span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">
+                      <span class="frun-change frun-change-created" style="flex-shrink:0">+</span>
+                      <span><strong style="color:#4ade80">Created</strong> — new file since the last run.</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">
+                      <span class="frun-change frun-change-modified" style="flex-shrink:0">~</span>
+                      <span><strong style="color:#facc15">Modified</strong> — file content changed since the last run.</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">
+                      <span class="frun-change frun-change-readded" style="flex-shrink:0">↩</span>
+                      <span><strong style="color:#60a5fa">Re-added</strong> — previously excluded, now included again.</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">
+                      <span class="frun-change frun-change-removed" style="flex-shrink:0">−</span>
+                      <span><strong style="color:var(--err)">Removed</strong> — dropped from the analysis.</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">
+                      <span class="frun-change frun-change-retried" style="flex-shrink:0">↺</span>
+                      <span><strong style="color:#c084fc">Retried</strong> — re-run manually from this panel.</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
+                      <span class="frun-change frun-change-edited" style="flex-shrink:0">✎</span>
+                      <span><strong style="color:#38bdf8">Edited</strong> — result was edited directly in the UI.</span>
+                    </span>
+                    <span style="display:block;border-top:1px solid var(--b2);margin-top:4px;padding-top:6px;color:var(--t2);font-weight:600;font-size:11px;margin-bottom:4px">Status icons</span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">
+                      <span class="frun-status frun-pending" style="flex-shrink:0">·</span>
+                      <span><strong style="color:var(--t4)">Pending</strong> — queued, waiting its turn.</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">
+                      <span class="frun-status frun-running" style="flex-shrink:0">⟳</span>
+                      <span><strong style="color:var(--a)">Running</strong> — currently being analyzed (purple if it's a retry).</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">
+                      <span class="frun-status frun-ok" style="flex-shrink:0">✓</span>
+                      <span><strong style="color:var(--a)">Done</strong> — analysis finished, result available in the tabs.</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">
+                      <span class="frun-status frun-error" style="flex-shrink:0">⚠</span>
+                      <span><strong style="color:var(--err)">Error</strong> — analysis failed. Hit <strong style="color:var(--t2)">↺ retry</strong> on the row to try again.</span>
+                    </span>
+                    <span style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
+                      <span class="frun-status frun-deleted" style="flex-shrink:0">✕</span>
+                      <span><strong style="color:var(--err);opacity:.7">Deleted</strong> — removed from the project since the last run.</span>
+                    </span>
+                    <span style="color:var(--t3);font-size:10px;display:block;border-top:1px solid var(--b2);padding-top:7px">Use <strong style="color:var(--t2)">↺ retry</strong> on a row to re-analyze just that file.</span>
+                  </span>
+                </span>
+              </span>
+              <span class="panel-head-badge" id="file-run-count"></span>
+            </div>
             <div id="file-run-list"></div>
           </div>
           <div id="log-subpanel">
