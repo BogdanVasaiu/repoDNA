@@ -1114,6 +1114,10 @@ function serveFromDir(baseDir, relPath, res) {
 }
 
 function serveStatic(filePath, res) {
+  if (filePath.startsWith("shared/") || filePath === "shared") {
+    serveFromDir(DOCS_DIR, filePath, res);
+    return;
+  }
   serveFromDir(PUBLIC_DIR, filePath, res);
 }
 
