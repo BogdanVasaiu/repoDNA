@@ -2379,13 +2379,23 @@ function applyTreeHighlights() {
     }
   });
 }
+function isTreeFilterActive() {
+  return (S.treeSearchQuery && S.treeSearchQuery.length > 0) || S.treeFilter !== "all";
+}
 function renderTree() {
   var expanded = getExpandedState();
   var container = document.getElementById("file-tree");
   container.innerHTML = "";
+  // Pre-compute visibility so folder rendering (branch glyphs, mixed-state,
+  // Select/Unselect actions) only considers nodes the user actually sees.
+  S._visibility = computeTreeVisibility();
+  var rootVisible = S.treeData.filter(function (n) { return S._visibility[n.id] !== false; });
   for (var i = 0; i < S.treeData.length; i++) {
-    var isLast = i === S.treeData.length - 1;
-    container.appendChild(createTreeNode(S.treeData[i], 0, isLast, []));
+    var node = S.treeData[i];
+    var isLast = rootVisible.length > 0
+      ? node === rootVisible[rootVisible.length - 1]
+      : i === S.treeData.length - 1;
+    container.appendChild(createTreeNode(node, 0, isLast, []));
   }
   if (Object.keys(expanded).length > 0) applyExpandedState(expanded);
   applyTreeHighlights();
@@ -2441,8 +2451,10 @@ function createTreeNode(node, depth, isLast, lineage) {
       cbClass = finalSt === "included" ? "cb-included" : "cb-excluded";
       cbIcon = finalSt === "included" ? "✓" : "";
     } else {
+      var filterActiveForState = isTreeFilterActive();
       var cs = {};
       function collectSt(n) {
+        if (filterActiveForState && S._visibility && S._visibility[n.id] === false) return;
         if (n.type === "file") cs[getFinalStatus(n)] = true;
         if (n.children)
           for (var j = 0; j < n.children.length; j++) collectSt(n.children[j]);
@@ -2452,6 +2464,12 @@ function createTreeNode(node, depth, isLast, lineage) {
       if (keys.length > 1) {
         cbClass = "cb-mixed";
         cbIcon = "–";
+      } else if (keys.length === 1 && keys[0] === "included") {
+        cbClass = "cb-included";
+        cbIcon = "✓";
+      } else if (keys.length === 1) {
+        cbClass = "cb-excluded";
+        cbIcon = "";
       } else if (finalSt === "included") {
         cbClass = "cb-included";
         cbIcon = "✓";
@@ -2507,8 +2525,16 @@ function createTreeNode(node, depth, isLast, lineage) {
       childContainer.className =
         depth < 2 ? "tree-children" : "tree-children collapsed";
       var childLineage = lineage.concat([isLast]);
+      var visibleChildren = node.children.filter(function (c) {
+        return !S._visibility || S._visibility[c.id] !== false;
+      });
+      var lastVisibleChild = visibleChildren.length > 0
+        ? visibleChildren[visibleChildren.length - 1]
+        : null;
       for (var ci = 0; ci < node.children.length; ci++) {
-        var childIsLast = ci === node.children.length - 1;
+        var childIsLast = lastVisibleChild
+          ? node.children[ci] === lastVisibleChild
+          : ci === node.children.length - 1;
         childContainer.appendChild(
           createTreeNode(node.children[ci], depth + 1, childIsLast, childLineage),
         );
@@ -2529,10 +2555,13 @@ function createTreeNode(node, depth, isLast, lineage) {
       btn.addEventListener("click", function (e) {
         e.stopPropagation();
         var action = btn.dataset.da;
+        var filterActive = isTreeFilterActive();
         withHistory(
-          (action === "include" ? "Select" : "Unselect") + " folder " + node.name,
+          (action === "include" ? "Select" : "Unselect") +
+            (filterActive ? " visible in folder " : " folder ") + node.name,
           function () {
             function applyAll(n) {
+              if (filterActive && S._visibility && S._visibility[n.id] === false) return;
               if (n.type === "file")
                 S.userOverrides.set(
                   n.id,
@@ -2553,18 +2582,25 @@ function createTreeNode(node, depth, isLast, lineage) {
     });
     row.querySelector(".tree-checkbox").addEventListener("click", function (e) {
       e.stopPropagation();
+      var filterActive = isTreeFilterActive();
       var allIncluded = true;
+      var anyFile = false;
       function checkAll(n) {
-        if (n.type === "file" && getFinalStatus(n) !== "included")
-          allIncluded = false;
+        if (filterActive && S._visibility && S._visibility[n.id] === false) return;
+        if (n.type === "file") {
+          anyFile = true;
+          if (getFinalStatus(n) !== "included") allIncluded = false;
+        }
         if (n.children) n.children.forEach(checkAll);
       }
       checkAll(node);
-      var target = allIncluded ? "excluded" : "included";
+      var target = (anyFile && allIncluded) ? "excluded" : "included";
       withHistory(
-        (target === "included" ? "Select" : "Unselect") + " folder " + node.name,
+        (target === "included" ? "Select" : "Unselect") +
+          (filterActive ? " visible in folder " : " folder ") + node.name,
         function () {
           function applyAll(n) {
+            if (filterActive && S._visibility && S._visibility[n.id] === false) return;
             if (n.type === "file") S.userOverrides.set(n.id, target);
             if (n.children) n.children.forEach(applyAll);
           }
@@ -2945,15 +2981,16 @@ window._treeFilter = function (f, btn) {
       b.classList.remove("active");
     });
   if (btn) btn.classList.add("active");
-  applyTreeFilters();
+  // Re-render so folder branch glyphs, mixed-state, and Select/Unselect
+  // actions reflect only the currently-visible subset.
+  renderTree();
 };
 window._treeSearch = function (q) {
   S.treeSearchQuery = q;
-  applyTreeFilters();
+  renderTree();
 };
-function applyTreeFilters() {
-  var q = S.treeSearchQuery.toLowerCase();
-  var active = q.length > 0 || S.treeFilter !== "all";
+function computeTreeVisibility() {
+  var q = (S.treeSearchQuery || "").toLowerCase();
 
   function ownMatches(nd) {
     if (q) {
@@ -3011,6 +3048,11 @@ function applyTreeFilters() {
     return visible;
   }
   for (var i = 0; i < S.treeData.length; i++) compute(S.treeData[i]);
+  return visibility;
+}
+function applyTreeFilters() {
+  var active = isTreeFilterActive();
+  var visibility = S._visibility || {};
 
   document.querySelectorAll(".tree-node").forEach(function (el) {
     var nid = el.dataset.nodeId || "";
