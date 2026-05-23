@@ -3689,6 +3689,14 @@ window._openResolveTable = function () {
   // to clear every per-file decision the user made, regardless of whether the file is
   // still in the current `ambig` array (rule applications shrink `ambig`).
   var originalAmbigIds = ambig.map(function (n) { return n.id; });
+  // Snapshot the suggestions surfaced from the original undecided set. We always show
+  // these in the strip — even after another rule absorbs all their files — so undoing a
+  // rule never makes a previously-visible suggestion vanish. Without this cache, e.g.
+  // applying `agents/` then `.svg` then undoing `agents/` would drop `agents/` from the
+  // strip entirely (current ambig becomes 1 file, below every threshold).
+  var initialSuggestionKeys = computeSuggestions(ambig).map(function (s) {
+    return { type: s.type, key: s.key, label: s.label, places: s.places || 0 };
+  });
   // Rules applied during THIS modal session. Each entry: {type, key, action, count, label, ruleKey}
   // Kept so the strip can show them with an "undo" affordance even after the underlying
   // files have been reclassified out of the ambig snapshot.
@@ -3728,10 +3736,40 @@ window._openResolveTable = function () {
     '</div>';
   document.body.appendChild(overlay);
 
+  // How many files in the CURRENT ambig snapshot a rule would affect right now.
+  // Used to label available suggestions — 0 means another active rule has already
+  // absorbed all of them (undo that rule to bring them back).
+  function currentImpactCount(type, key) {
+    var hits = 0;
+    for (var i = 0; i < ambig.length; i++) {
+      var n = ambig[i];
+      if (type === "extension") {
+        if ((n.extension || "").toLowerCase() === key) hits++;
+      } else {
+        var parts = n.id.split("/");
+        for (var j = 0; j < parts.length - 1; j++) {
+          if (parts[j] === key) { hits++; break; }
+        }
+      }
+    }
+    return hits;
+  }
+
   function renderSuggestions() {
     var sEl = document.getElementById("rt-suggest");
     if (!sEl) return;
-    var available = computeSuggestions(ambig);
+    var appliedKeySet = {};
+    appliedRules.forEach(function (a) { appliedKeySet[a.type + "|" + a.key] = true; });
+    // Always show the suggestions surfaced from the original undecided set, minus the
+    // ones currently applied. Counts are recomputed live against the current ambig.
+    var available = initialSuggestionKeys
+      .filter(function (s) { return !appliedKeySet[s.type + "|" + s.key]; })
+      .map(function (s) {
+        return {
+          type: s.type, key: s.key, label: s.label, places: s.places,
+          count: currentImpactCount(s.type, s.key),
+        };
+      });
     if (!available.length && !appliedRules.length) {
       sEl.style.display = "none";
       sEl.innerHTML = "";
@@ -3759,8 +3797,11 @@ window._openResolveTable = function () {
       );
     }).join("");
     var availableHtml = available.map(function (s) {
+      var noImpact = s.count === 0;
+      var itemClass = "rt-suggest-item" + (noImpact ? " rt-suggest-noimpact" : "");
+      var itemTitle = noImpact ? ' title="No undecided files left for this pattern — another rule already covers them"' : "";
       return (
-        '<div class="rt-suggest-item" data-type="' + s.type + '" data-key="' + escHtml(s.key) + '">' +
+        '<div class="' + itemClass + '" data-type="' + s.type + '" data-key="' + escHtml(s.key) + '"' + itemTitle + '>' +
         '<span class="rt-suggest-pattern">' + (s.type === "folder" ? "📁 " : "") + escHtml(s.label) + '</span>' +
         '<span class="rt-suggest-count">' + s.count + '</span>' +
         placesLabel(s) +
@@ -3910,7 +3951,10 @@ window._openResolveTable = function () {
     var rem = document.getElementById("rt-remaining");
     var tot = document.getElementById("rt-total");
     if (rem) rem.textContent = remaining;
-    if (tot) tot.textContent = ambig.length;
+    // Stable total — the count of undecided files the modal opened with. Using
+    // ambig.length here would shrink as rules absorb files, making the header read
+    // "1 of 1" even though the session started with 29.
+    if (tot) tot.textContent = originalAmbigIds.length;
   }
 
   function renderList() {
