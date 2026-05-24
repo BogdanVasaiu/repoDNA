@@ -80,7 +80,7 @@
   <div class="hero-inner">
     <div class="hero-eyebrow fade-in">
       <span class="hero-eyebrow-dot"></span>
-      Free · Open Source · Runs Locally
+      Open Source · No API Keys · Easy to Use
     </div>
 
     <h1 class="hero-heading fade-in">
@@ -89,9 +89,10 @@
     </h1>
 
     <p class="hero-sub fade-in">
-      repoDNA scans your project with a local Ollama model and writes the
-      structured context file your AI coding assistant needs — so every session
-      starts with full project understanding.
+      Every new AI session starts with no memory of your project. You end up
+      re-explaining the same things every time. repoDNA fixes this — it scans
+      your codebase and generates the context file your assistant reads at
+      startup, so it already understands your project from the first message.
     </p>
 
     <div class="hero-cta fade-in">
@@ -134,12 +135,12 @@
     <div class="install-requirements fade-in">
       <span class="install-req-item">
         <img src="shared/assets/nodejs-icon.svg" width="14" height="14" alt="Node.js" style="object-fit:contain">
-        Node.js 18+
+        Node.js 18+ to start
       </span>
       <span class="install-req-sep"></span>
       <span class="install-req-item">
         <img src="shared/assets/ollama-icon.svg" width="14" height="14" alt="Ollama" style="object-fit:contain">
-        Ollama
+        Ollama guided by the UI
       </span>
       <span class="install-req-sep"></span>
       <span style="color:var(--a)">Windows · macOS · Linux</span>
@@ -147,6 +148,7 @@
   </div>
 
   <div class="hero-animation fade-in">
+    <div class="anim-init-cover" id="anim-init-cover"></div>
     <iframe src="shared/animation1-standalone.html"
             title="repoDNA animation"
             loading="lazy"
@@ -171,8 +173,8 @@
       <span class="stat-label">Precision Modes</span>
     </div>
     <div class="stat-item">
-      <span class="stat-value white">100%</span>
-      <span class="stat-label">Local &amp; Private</span>
+      <span class="stat-value white">0</span>
+      <span class="stat-label">API Keys Required</span>
     </div>
   </div>
 </div>
@@ -313,10 +315,10 @@
         <div class="step-v-body">
           <div class="step-v-title">Select what to scan</div>
           <p class="step-v-desc">
-            An intelligent algorithm examines your project structure and suggests
-            which folders and file types are safe to exclude — node_modules,
-            build artifacts, generated files. You review and confirm. Custom rules
-            are remembered per project.
+            repoDNA detects your project type and pre-selects what to scan.
+            Dependencies, build output, and binaries are automatically excluded.
+            Every decision is visible in the file tree — you can override anything,
+            per file or per folder. Your custom rules are saved and reused on the next run.
           </p>
           <span class="step-v-tag">Smart defaults · user overrides always win</span>
         </div>
@@ -434,11 +436,11 @@
             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
           </svg>
         </div>
-        <h3 class="feature-title">Fully local and private</h3>
+        <h3 class="feature-title">No API keys, no accounts</h3>
         <p class="feature-desc">
-          All analysis runs through Ollama on your own machine. No data leaves
-          your environment, no cloud API is called, no account needed.
-          Your codebase stays yours.
+          Analysis runs through Ollama — locally on your machine, or on any
+          remote machine you control. No proprietary cloud API, no account needed,
+          no data sent anywhere you didn't choose.
         </p>
       </div>
 
@@ -833,11 +835,6 @@
               <span class="install-cmd">node update.mjs</span>
               <button class="install-copy-btn" onclick="copyInstall('node update.mjs', this)">copy</button>
             </div>
-            <div class="install-line">
-              <span class="install-prompt">$</span>
-              <span class="install-cmd">node update.mjs <span style="color:var(--t4)">--force</span></span>
-              <button class="install-copy-btn" onclick="copyInstall('node update.mjs --force', this)">copy</button>
-            </div>
           </div>
         </div>
 
@@ -997,6 +994,31 @@
   makeDna('dna-footer', ACCENT);
   typewriter('brand-nav');
 
+  // ── ANIMATION INIT COVER ────────────────────────────────────
+  // Hide the iframe while the bundle unpacks to prevent a flash
+  // of the distorted/intermediate state on cached page loads.
+  (function () {
+    const cover  = document.getElementById('anim-init-cover');
+    const iframe = cover && cover.nextElementSibling;
+    if (!cover || !iframe) return;
+
+    function reveal() {
+      setTimeout(function () { cover.classList.add('gone'); }, 800);
+    }
+
+    iframe.addEventListener('load', reveal);
+
+    // BFCache: page restored from memory — iframe won't re-fire load
+    window.addEventListener('pageshow', function (e) {
+      if (!e.persisted) return;
+      cover.style.transition = 'none';
+      cover.classList.remove('gone');
+      cover.offsetHeight; // force reflow
+      cover.style.transition = '';
+      reveal();
+    });
+  }());
+
 })();
 
 // ── VIDEO SERIES ──────────────────────────────────────────────
@@ -1123,7 +1145,28 @@
     } catch (_) {}
   });
 
-  // Init
+  // Init — show Coming Soon if no video has a real ID
+  const hasVideos = VIDEO_SERIES.some(v => v.id);
+  if (!hasVideos) {
+    document.getElementById('vp-wrap').classList.add('vp-cs');
+    document.getElementById('vp-wrap').innerHTML = `
+      <div class="vp-cs-inner">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--t3)">
+          <circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/>
+        </svg>
+        <div class="vp-cs-title">Coming Soon</div>
+        <p class="vp-cs-desc">A video series is on the way.</p>
+      </div>`;
+    buildPlaylist();
+    if (VIDEO_SERIES[0]) {
+      titleEl.textContent = VIDEO_SERIES[0].title;
+      descEl.textContent  = VIDEO_SERIES[0].desc;
+      epEl.textContent    = `Episode 1 of ${VIDEO_SERIES.length}`;
+    }
+    listEl.querySelectorAll('.vp-card').forEach(c => { c.onclick = null; });
+    vpInitialized = true;
+    return;
+  }
   buildPlaylist();
   vpGoTo(0, false);
   vpInitialized = true;

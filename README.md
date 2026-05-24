@@ -40,7 +40,7 @@ _(Pass `--no-open` to skip auto-launch in headless/CI environments.)_
 
 ## How It Works
 
-A five-step wizard that runs in your browser. No config files, no CLI flags.
+The entire process runs in a guided browser UI — open it, follow the steps, get your context file.
 
 ### 01 — Ollama Setup
 
@@ -56,7 +56,7 @@ Register one or more local project paths with an optional description. The descr
 
 ### 03 — Select What to Scan
 
-An intelligent classifier examines your project structure and applies smart defaults: skip `node_modules`, build output, binaries. Every decision is visible and overridable per file or folder. Custom rules are saved per project.
+repoDNA detects your project type and pre-selects what to scan. Dependencies, build output, and binaries are automatically excluded. Every decision is visible in a file tree — you can override anything, per file or per folder. Your custom rules are saved and reused on the next run.
 
 <img src="docs/shared/assets/steps/step-03.png" alt="Step 3 — Select Files" width="700">
 

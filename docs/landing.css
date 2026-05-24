@@ -423,12 +423,24 @@ a { color: inherit; text-decoration: none; }
 
 /* ── HERO ANIMATION ───────────────────────────────────────── */
 .hero-animation {
+  position: relative;
   margin: 128px auto 0;
   max-width: 1200px;
   width: 100%;
   background: transparent;
   aspect-ratio: 16 / 10;
   overflow: hidden;
+}
+.anim-init-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: var(--bg);
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+.anim-init-cover.gone {
+  opacity: 0;
 }
 .hero-animation iframe {
   width: 100%;
@@ -1210,6 +1222,31 @@ transform-origin: 25% 50%;
   background: var(--s2);
   border: 1px solid var(--b2);
   box-shadow: 0 16px 56px rgba(0,0,0,.55);
+}
+
+.vp-cs {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+.vp-cs-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  padding: 40px;
+}
+.vp-cs-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--t2);
+  letter-spacing: .01em;
+}
+.vp-cs-desc {
+  color: var(--t4);
+  font-size: 13px;
+  margin: 0;
 }
 
 /* Thumbnail overlay */
