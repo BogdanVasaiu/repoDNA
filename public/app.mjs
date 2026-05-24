@@ -3088,34 +3088,70 @@ async function loadDefaultRules() {
 function renderAdvSettings() {
   var tabs = document.getElementById("adv-tabs");
   var td = [
-    { id: "exc-folders", label: "Excluded Folders" },
-    { id: "exc-exts", label: "Excluded Extensions" },
-    { id: "exc-files", label: "Excluded Files" },
-    { id: "inc-exts", label: "Included Extensions" },
-    { id: "inc-files", label: "Included Files" },
+    { id: "exc-folders", label: "Excluded Folders", icon: "folder", exc: true },
+    { id: "exc-exts",    label: "Excluded Extensions", icon: "ext",  exc: true },
+    { id: "exc-files",   label: "Excluded Files",      icon: "file", exc: true },
+    { id: "inc-exts",    label: "Included Extensions", icon: "ext",  exc: false },
+    { id: "inc-files",   label: "Included Files",      icon: "file", exc: false },
   ];
+  var _SVGS = {
+    folder: '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>',
+    file:   '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>',
+    ext:    '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"/></svg>',
+  };
+
+  function _iconHtml(t) {
+    var color = t.exc ? "#f87171" : "#20e3a0";
+    return '<span style="color:' + color + ';display:inline-flex;align-items:center;flex-shrink:0">' + _SVGS[t.icon] + '</span>';
+  }
+
+  var active = td.find(function(t){ return t.id === S.advActiveTab; }) || td[0];
   tabs.innerHTML =
-    '<select class="input adv-tab-select" id="adv-tab-select">' +
-    td
-      .map(function (t) {
-        return (
-          '<option value="' +
-          t.id +
-          '"' +
-          (t.id === S.advActiveTab ? " selected" : "") +
-          ">" +
-          t.label +
-          "</option>"
-        );
-      })
-      .join("") +
-    "</select>";
-  document
-    .getElementById("adv-tab-select")
-    .addEventListener("change", function (e) {
-      S.advActiveTab = e.target.value;
-      renderAdvContent();
-    });
+    '<div class="adv-csel" id="adv-csel">' +
+      '<button class="adv-csel-trigger" id="adv-csel-trigger" type="button">' +
+        _iconHtml(active) +
+        '<span class="adv-csel-label">' + active.label + '</span>' +
+        '<span class="adv-csel-arrow">▾</span>' +
+      '</button>' +
+      '<div class="adv-csel-dropdown" id="adv-csel-dropdown">' +
+        td.map(function(t) {
+          return '<button class="adv-csel-option ' + (t.exc ? 'exc' : 'inc') + (t.id === S.advActiveTab ? ' active' : '') +
+            '" type="button" data-id="' + t.id + '">' +
+            _iconHtml(t) + t.label + '</button>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+
+  var csel    = document.getElementById("adv-csel");
+  var trigger = document.getElementById("adv-csel-trigger");
+  var dropdown = document.getElementById("adv-csel-dropdown");
+
+  trigger.addEventListener("click", function(e) {
+    e.stopPropagation();
+    var opening = !csel.classList.contains("open");
+    csel.classList.toggle("open");
+    if (opening) {
+      var r = trigger.getBoundingClientRect();
+      dropdown.style.top  = r.top + "px";
+      dropdown.style.left = (r.right + 6) + "px";
+    }
+  });
+
+  dropdown.addEventListener("click", function(e) {
+    var btn = e.target.closest(".adv-csel-option");
+    if (!btn) return;
+    S.advActiveTab = btn.dataset.id;
+    csel.classList.remove("open");
+    renderAdvSettings();
+  });
+
+  document.addEventListener("click", function _closeAdv(e) {
+    if (!csel.contains(e.target)) {
+      csel.classList.remove("open");
+      document.removeEventListener("click", _closeAdv);
+    }
+  });
+
   renderAdvContent();
 }
 function renderAdvContent() {
@@ -3250,6 +3286,15 @@ function renderAdvContent() {
     .sort(function(a,b){ return a.name.localeCompare(b.name); });
   items = _pinned.concat(_normal);
 
+  var _iconType = S.advActiveTab.endsWith("folders") ? "folder"
+               : S.advActiveTab.endsWith("files") ? "file" : "ext";
+  var _baseIsExc = S.advActiveTab.startsWith("exc");
+  var _SVGS = {
+    folder: '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>',
+    file:   '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>',
+    ext:    '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"/></svg>',
+  };
+
   var h = '<div class="adv-list">';
   for (var i = 0; i < items.length; i++) {
     var it = items[i];
@@ -3266,10 +3311,13 @@ function renderAdvContent() {
       : it.isRemoved
         ? ' <span style="font-size:9px;background:rgba(248,113,113,.1);color:var(--err);padding:1px 5px;border-radius:3px">−removed</span>'
         : '';
+    var _effectivelyExc = _baseIsExc ? !it.isRemoved : it.isRemoved;
+    var _iconColor = _effectivelyExc ? "#f87171" : "#20e3a0";
+    var _icon = '<span style="color:' + _iconColor + ';display:inline-flex;align-items:center;flex-shrink:0">' + _SVGS[_iconType] + '</span>';
     h +=
       '<div class="' +
       rowClass +
-      '"><span class="adv-item-name" style="' +
+      '">' + _icon + '<span class="adv-item-name" style="' +
       nameStyle +
       '">' +
       escHtml(it.name) +
