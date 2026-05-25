@@ -567,201 +567,257 @@ const PROJECT_RULES = {
 };
 
 // ─── CATEGORY DEFINITIONS ────────────────────────────────
+// Order matters — assignCategory returns the first match, so more specific
+// categories must come before the broad "source-code" catch-all.
 export const CATEGORIES = [
   {
-    id: "source-code",
-    label: "Codice sorgente",
-    icon: "💻",
-    defaultAutoStatus: "included",
-    extensions: new Set([
-      "html",
-      "htm",
-      "css",
-      "scss",
-      "sass",
-      "less",
-      "js",
-      "mjs",
-      "cjs",
-      "ts",
-      "mts",
-      "cts",
-      "jsx",
-      "tsx",
-      "vue",
-      "svelte",
-      "astro",
-      "py",
-      "rb",
-      "php",
-      "java",
-      "kt",
-      "kts",
-      "groovy",
-      "scala",
-      "cs",
-      "fs",
-      "fsx",
-      "fsi",
-      "vb",
-      "go",
-      "rs",
-      "c",
-      "cpp",
-      "cc",
-      "cxx",
-      "h",
-      "hpp",
-      "hxx",
-      "swift",
-      "m",
-      "mm",
-      "dart",
-      "lua",
-      "r",
-      "jl",
-      "nim",
-      "zig",
-      "ex",
-      "exs",
-      "erl",
-      "hrl",
-      "clj",
-      "cljs",
-      "cljc",
-      "ml",
-      "mli",
-      "hs",
-      "lhs",
-      "pl",
-      "pm",
-      "t",
-    ]),
-  },
-  {
-    id: "config",
-    label: "Configurazione",
-    icon: "⚙️",
-    defaultAutoStatus: "included",
-    extensions: new Set([
-      "json",
-      "yaml",
-      "yml",
-      "toml",
-      "ini",
-      "cfg",
-      "conf",
-      "config",
-      "properties",
-      "xml",
-      "plist",
-      "tf",
-      "tfvars",
-      "hcl",
-    ]),
-  },
-  {
-    id: "docs",
-    label: "Documentazione",
-    icon: "📖",
-    defaultAutoStatus: "included",
-    extensions: new Set([
-      "md",
-      "mdx",
-      "rst",
-      "txt",
-      "adoc",
-      "asciidoc",
-      "tex",
-      "latex",
-    ]),
-  },
-  {
     id: "styles",
-    label: "Stili",
+    label: "Styles",
     icon: "🎨",
     defaultAutoStatus: "included",
-    extensions: new Set(["css", "scss", "sass", "less"]),
+    extensions: new Set(["css", "scss", "sass", "less", "styl", "stylus", "pcss"]),
   },
   {
     id: "templates",
-    label: "Template / Markup",
+    label: "Templates",
     icon: "🖼️",
     defaultAutoStatus: "included",
     extensions: new Set([
-      "html",
-      "htm",
-      "vue",
-      "svelte",
-      "astro",
-      "jsx",
-      "tsx",
+      // Component frameworks
+      "html", "htm", "xhtml", "vue", "svelte", "astro", "jsx", "tsx",
+      // JS engines
+      "hbs", "handlebars", "ejs", "pug", "jade", "njk", "nunjucks", "mustache",
+      // Python engines
+      "jinja", "jinja2", "j2", "mako",
+      // Ruby
+      "erb",
+      // PHP / generic
+      "liquid", "twig", "latte",
+      // Java engines
+      "jsp", "jspx", "vm", "ftl",
+      // ASP.NET / Razor
+      "asp", "aspx", "cshtml", "vbhtml",
+      // Go templates
+      "gohtml", "gotmpl", "tmpl",
+      // HAML
+      "haml",
+      // XSLT
+      "xsl", "xslt",
+    ]),
+  },
+  {
+    id: "scripts",
+    label: "Scripts",
+    icon: "📜",
+    defaultAutoStatus: "included",
+    extensions: new Set([
+      // Unix shells
+      "sh", "bash", "zsh", "fish", "csh", "ksh", "nu",
+      // Windows
+      "ps1", "psm1", "psd1", "bat", "cmd", "vbs",
+      // Utilities
+      "awk", "sed", "tcl", "expect",
+    ]),
+  },
+  {
+    id: "shaders",
+    label: "Shaders",
+    icon: "✨",
+    defaultAutoStatus: "included",
+    extensions: new Set([
+      "shader", "hlsl", "cginc", "glsl", "gdshader",
+      "wgsl", "metal", "vert", "frag", "comp", "compute",
+      "geom", "tesc", "tese",
+      // Ray tracing stages
+      "rgen", "rmiss", "rchit", "rahit", "rint", "rcall",
+    ]),
+  },
+  {
+    id: "3d-models",
+    label: "3D Models",
+    icon: "🧊",
+    defaultAutoStatus: "ambiguous",
+    extensions: new Set([
+      // Common interchange
+      "obj", "fbx", "gltf", "glb", "dae", "stl", "ply", "x3d", "3ds",
+      // USD (Pixar / Apple)
+      "usd", "usda", "usdc", "usdz",
+      // DCC tools
+      "blend", "abc", "mtl", "ma", "mb",
+      // CAD
+      "igs", "iges", "stp", "step",
+    ]),
+  },
+  {
+    id: "game-assets",
+    label: "Game Assets",
+    icon: "🎮",
+    defaultAutoStatus: "ambiguous",
+    extensions: new Set([
+      // Godot
+      "tscn", "tres", "gdns", "gdnlib", "gdextension",
+      // Unity
+      "prefab", "unity", "mat", "anim", "controller",
+      "mask", "asset", "physicsmaterial", "physicsmaterial2d",
+      "overridecontroller", "playable", "terrainlayer",
+      "asmdef", "asmref",
     ]),
   },
   {
     id: "data-schema",
-    label: "Schema e Query",
+    label: "Data & Schema",
     icon: "🗄️",
     defaultAutoStatus: "included",
     extensions: new Set([
-      "sql",
-      "graphql",
-      "gql",
-      "prisma",
-      "proto",
-      "thrift",
-      "avro",
-      "capnp",
+      "sql", "graphql", "gql", "prisma",
+      "proto", "thrift", "avro", "capnp", "fbs",
+      // XML schemas & web services
+      "wsdl", "xsd", "dtd", "rng",
     ]),
   },
   {
     id: "notebooks",
-    label: "Notebook",
+    label: "Notebooks",
     icon: "📓",
     defaultAutoStatus: "included",
-    extensions: new Set(["ipynb"]),
+    extensions: new Set(["ipynb", "rmd", "qmd"]),
   },
   {
-    id: "scripts",
-    label: "Script di sistema",
-    icon: "📜",
+    id: "source-code",
+    label: "Source Code",
+    icon: "💻",
     defaultAutoStatus: "included",
     extensions: new Set([
-      "sh",
-      "bash",
-      "zsh",
-      "fish",
-      "ps1",
-      "psm1",
-      "psd1",
-      "bat",
-      "cmd",
-      "awk",
-      "sed",
+      // JS / TS
+      "js", "mjs", "cjs", "ts", "mts", "cts",
+      // Python
+      "py", "pyw",
+      // JVM
+      "java", "kt", "kts", "groovy", "scala",
+      // .NET
+      "cs", "fs", "fsx", "fsi", "vb",
+      // Systems languages
+      "go", "rs", "c", "cpp", "cc", "cxx", "h", "hpp", "hxx", "ipp", "inl",
+      "zig", "nim", "odin", "d", "cr", "v",
+      // Assembly
+      "asm", "s", "nasm",
+      // WebAssembly text
+      "wat",
+      // Mobile / cross-platform
+      "swift", "m", "mm", "dart", "rb", "php",
+      // Functional / ML family
+      "hs", "lhs", "ml", "mli", "sml", "sig",
+      // Erlang / Elixir
+      "ex", "exs", "erl", "hrl",
+      // Clojure family
+      "clj", "cljs", "cljc",
+      // Frontend FP
+      "elm", "purs",
+      // Lisp family
+      "lisp", "cl", "lsp", "el", "rkt", "rktl", "scm", "ss",
+      // Other FP / emerging
+      "gleam", "hx",
+      // Scala scripts (Ammonite)
+      "sc",
+      // Game scripting
+      "gd", "coffee", "litcoffee",
+      // Hardware description
+      "vhd", "vhdl", "sv", "svh",
+      // Scripting
+      "lua", "r", "jl", "pl", "pm", "t",
+      // Legacy / enterprise
+      "cob", "cbl", "cpy",
+      "ada", "adb", "ads",
+      "pas", "pp", "dpr",
+      "f", "f90", "f95", "f03", "f08", "for",
+      // Blockchain
+      "sol", "vy", "cairo", "move",
     ]),
   },
   {
+    id: "config",
+    label: "Config",
+    icon: "⚙️",
+    defaultAutoStatus: "included",
+    extensions: new Set([
+      // Serialization
+      "json", "jsonc", "json5", "yaml", "yml", "toml", "ini",
+      "cfg", "conf", "config", "properties",
+      // Markup-based
+      "xml", "plist",
+      // IaC
+      "tf", "tfvars", "hcl",
+      // Build / package defs
+      "gradle", "sbt", "podspec", "gemspec", "nuspec",
+      "bazel", "bzl",
+      // Config languages
+      "nix", "dhall", "cue",
+      // Xcode
+      "xcconfig",
+      // Env
+      "env", "envrc",
+    ]),
+  },
+  {
+    id: "docs",
+    label: "Docs",
+    icon: "📖",
+    defaultAutoStatus: "included",
+    extensions: new Set([
+      "md", "mdx", "rst", "txt",
+      "adoc", "asciidoc", "tex", "latex",
+      "wiki", "org", "pod", "man",
+      // Gherkin / Cucumber test specs
+      "feature",
+    ]),
+  },
+  {
+    id: "documents",
+    label: "Documents",
+    icon: "📄",
+    defaultAutoStatus: "excluded",
+    extensions: new Set([
+      "pdf",
+      "doc", "docx", "odt",
+      "xls", "xlsx", "ods",
+      "ppt", "pptx", "odp",
+      "rtf", "pages", "numbers", "key",
+    ]),
+  },
+  {
+    id: "localization",
+    label: "Localization",
+    icon: "🌐",
+    defaultAutoStatus: "included",
+    extensions: new Set([
+      "po", "pot",           // GNU gettext
+      "xlf", "xliff",        // XLIFF (iOS / enterprise)
+      "strings", "stringsdict", // Apple platforms
+      "resx",                // .NET
+      "arb",                 // Flutter / Dart
+    ]),
+  },
+  {
+    id: "data-files",
+    label: "Data Files",
+    icon: "📊",
+    defaultAutoStatus: "ambiguous",
+    extensions: new Set(["csv", "tsv", "jsonl", "ndjson"]),
+  },
+  {
     id: "images",
-    label: "Immagini",
+    label: "Images",
     icon: "🖼️",
     defaultAutoStatus: "excluded",
     extensions: new Set([
-      "png",
-      "jpg",
-      "jpeg",
-      "gif",
-      "bmp",
-      "tiff",
-      "tif",
-      "webp",
-      "ico",
-      "icns",
-      "heic",
-      "heif",
-      "avif",
-      "raw",
-      "cr2",
-      "nef",
+      // Raster
+      "png", "jpg", "jpeg", "gif", "bmp",
+      "tiff", "tif", "webp", "ico", "icns",
+      "heic", "heif", "avif", "raw", "cr2", "nef",
+      // GPU / game textures
+      "dds", "tga", "exr", "hdr", "ktx", "pvr", "astc",
+      // Design source files
+      "psd", "psb", "ai", "eps", "xcf", "kra", "ora", "sketch", "fig",
     ]),
   },
   {
@@ -773,118 +829,94 @@ export const CATEGORIES = [
   },
   {
     id: "fonts",
-    label: "Font",
+    label: "Fonts",
     icon: "🔤",
     defaultAutoStatus: "excluded",
-    extensions: new Set(["ttf", "otf", "woff", "woff2", "eot"]),
+    extensions: new Set(["ttf", "otf", "woff", "woff2", "eot", "fnt", "fon", "pfb", "pfm"]),
   },
   {
     id: "audio-video",
-    label: "Audio e Video",
+    label: "Audio & Video",
     icon: "🎬",
     defaultAutoStatus: "excluded",
     extensions: new Set([
-      "mp4",
-      "avi",
-      "mov",
-      "mkv",
-      "wmv",
-      "flv",
-      "webm",
-      "m4v",
-      "mpeg",
-      "mpg",
-      "ogv",
-      "3gp",
-      "mp3",
-      "wav",
-      "ogg",
-      "flac",
-      "aac",
-      "m4a",
-      "wma",
-      "opus",
-      "aiff",
-      "mid",
-      "midi",
+      // Video (no "ts" — conflicts with TypeScript)
+      "mp4", "avi", "mov", "mkv", "wmv", "flv", "webm",
+      "m4v", "mpeg", "mpg", "ogv", "3gp", "vob", "f4v", "m2ts",
+      // Audio
+      "mp3", "wav", "ogg", "flac", "aac", "m4a",
+      "wma", "opus", "aiff", "aif", "mid", "midi",
+      "amr", "mka", "wv", "ac3",
     ]),
   },
   {
     id: "archives",
-    label: "Archivi e Binari",
+    label: "Archives & Binaries",
     icon: "📦",
     defaultAutoStatus: "excluded",
     extensions: new Set([
-      "zip",
-      "tar",
-      "gz",
-      "bz2",
-      "xz",
-      "rar",
-      "7z",
-      "dmg",
-      "iso",
-      "img",
-      "deb",
-      "rpm",
-      "pkg",
-      "msi",
-      "exe",
-      "apk",
-      "ipa",
-      "dll",
-      "so",
-      "dylib",
-      "a",
-      "lib",
-      "o",
-      "class",
-      "pyc",
-      "pyd",
-      "pyo",
-      "wasm",
+      // Archives
+      "zip", "tar", "gz", "bz2", "xz", "rar", "7z", "zst", "lz", "cab", "cpio",
+      // Installers / packages
+      "dmg", "iso", "img", "deb", "rpm", "pkg", "msi", "msix",
+      "jar", "war", "ear",
+      "nupkg", "vsix", "crx", "xpi",
+      // Executables & compiled
+      "exe", "apk", "ipa", "dll", "so", "dylib",
+      "a", "lib", "o", "class", "pyc", "pyd", "pyo", "wasm",
+      // Binary data / legacy
+      "bin", "dat", "hex", "swf",
+    ]),
+  },
+  {
+    id: "databases",
+    label: "Databases",
+    icon: "🗃️",
+    defaultAutoStatus: "excluded",
+    extensions: new Set([
+      "db", "sqlite", "sqlite3", "db3",
+      "mdb", "accdb", "ldb", "sdf", "realm",
     ]),
   },
   {
     id: "locks",
-    label: "Lock files",
+    label: "Lock Files",
     icon: "🔒",
     defaultAutoStatus: "excluded",
     extensions: new Set(["lock"]),
   },
   {
     id: "generated",
-    label: "File generati",
+    label: "Generated",
     icon: "⚙️",
     defaultAutoStatus: "excluded",
-    extensions: new Set(["map"]),
+    extensions: new Set([
+      "map",
+      // Test snapshots (Jest / Vitest)
+      "snap",
+    ]),
   },
   {
     id: "logs",
-    label: "Log",
+    label: "Logs",
     icon: "📋",
     defaultAutoStatus: "excluded",
     extensions: new Set(["log", "logs"]),
   },
   {
     id: "certs",
-    label: "Certificati",
+    label: "Certificates",
     icon: "🔐",
     defaultAutoStatus: "excluded",
     extensions: new Set([
-      "pem",
-      "key",
-      "p12",
-      "pfx",
-      "crt",
-      "cer",
-      "der",
-      "jks",
+      "pem", "key", "p12", "pfx", "crt", "cer", "der",
+      "jks", "keystore",
+      "ppk", "pub", "gpg", "pgp", "asc", "p7b", "p7c", "csr",
     ]),
   },
   {
     id: "unknown",
-    label: "Tipo sconosciuto",
+    label: "Unknown",
     icon: "❓",
     defaultAutoStatus: "ambiguous",
     extensions: new Set(),
