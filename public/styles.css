@@ -159,6 +159,8 @@ body {
 .p2-sidebar .card-title {
   text-transform: none; letter-spacing: .01em; font-size: 11px;
 }
+.p2-cats-card { padding-left: 12px !important; padding-right: 12px !important; }
+.p2-cats-card .card-title { padding: 0 6px; }
 
 /* ── FORM ELEMENTS ───────────────────────────────────────── */
 .field { display: flex; flex-direction: column; gap: 3px; }
@@ -716,7 +718,7 @@ select.input { cursor: pointer; }
 .tree-node { }
 .tree-row {
   display: flex; align-items: center;
-  height: 28px; padding: 0 10px 0 0;
+  height: 28px; padding: 0 10px 0 4px;
   cursor: pointer; transition: background .07s;
   position: relative; user-select: none;
   isolation: isolate;

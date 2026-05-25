@@ -532,7 +532,7 @@ var FOLDER_COLORS = {
   plugins: "#f59e0b",
 };
 function getFolderColor(name) {
-  return FOLDER_COLORS[name.toLowerCase()] || "#dcb67a";
+  return "#f472b6";
 }
 function escHtml(s) {
   return (s || "")
@@ -2501,13 +2501,14 @@ function createTreeNode(node, depth, isLast, lineage) {
       ? '<span class="dir-empty-hint" title="This folder is excluded by a classifier rule. Remove the rule in Custom Rules → Excluded Folders to include it.">manage in Custom Rules</span>'
       : '';
     row.innerHTML =
-      indentHTML +
-      '<span class="tree-toggle">' +
-      (hasChildren ? "▸" : "") +
-      '</span><span class="tree-checkbox ' +
+      '<span class="tree-checkbox ' +
       cbClass +
       '">' +
       cbIcon +
+      '</span>' +
+      indentHTML +
+      '<span class="tree-toggle">' +
+      (hasChildren ? "▸" : "") +
       '</span><span class="tree-ficon">' +
       (isAutoExcluded ? getFolderSvg("#555") : getFolderSvg(folderColor)) +
       '</span><span class="tree-name dir-name ' +
@@ -2660,12 +2661,13 @@ function createTreeNode(node, depth, isLast, lineage) {
       badge2 = '<span class="tree-badge user-inc" title="' + (node.autoExcludeReason ? 'Manually included — overrides rule: ' + escHtml(node.autoExcludeReason) : 'Manually included — overrides the exclusion rule') + '">forced ✓</span>';
     var newBadge = node.isNew ? '<span class="tree-badge tree-badge-new" title="New file since last scan">new</span>' : "";
     row2.innerHTML =
-      indentHTML +
-      '<span class="tree-toggle tree-toggle-file"></span><span class="tree-checkbox ' +
+      '<span class="tree-checkbox ' +
       cbClass2 +
       '">' +
       cbIcon2 +
-      '</span><span class="tree-ficon">' +
+      '</span>' +
+      indentHTML +
+      '<span class="tree-toggle tree-toggle-file"></span><span class="tree-ficon">' +
       getFileBadge(ext2) +
       '</span><span class="tree-name ' +
       (finalSt2 === "excluded" ? "struck" : "") +
@@ -2833,7 +2835,7 @@ function renderCategoryChips() {
       ? '<button class="cat-und-btn cat-und-table" data-und-action="table" title="Open the resolve table">📋 Table</button>'
       : '';
     return (
-      '<button class="cat-und-trigger" type="button" title="Bulk actions" aria-label="Bulk actions">⋯</button>' +
+      '<button class="cat-und-trigger" type="button">⋯</button>' +
       '<div class="cat-und-btns">' +
       '<button class="cat-und-btn cat-und-inc" data-und-action="include">☑ all</button>' +
       '<button class="cat-und-btn cat-und-exc" data-und-action="exclude">☐ all</button>' +
@@ -2855,7 +2857,7 @@ function renderCategoryChips() {
     var newSel = S.selectedCategories.has("__new__");
     var newPct = newCount > 0 ? Math.round((newIncluded / newCount) * 100) : 0;
     html +=
-      '<div class="cat-item cat-new' + (newSel ? " cat-selected" : "") + '" data-cat="__new__">' +
+      '<div class="cat-item cat-new' + (newSel ? " cat-selected" : "") + '" data-cat="__new__" title="' + newIncluded + '/' + newCount + ' selected">' +
       '<div class="cat-icon-col"><span class="cat-icon">' + _ci('<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>', '#7dd3fc', '#c084fc') + '</span><span class="cat-count">' + newCount + '</span></div>' +
       '<div class="cat-right"><span class="cat-name cat-new-name">New</span>' +
       '<div class="cat-bar-wrap"><div class="cat-bar cat-new-bar"><div class="cat-bar-fill cat-new-bar-fill" style="width:' + newPct + '%"></div></div></div>' +
@@ -2866,7 +2868,7 @@ function renderCategoryChips() {
     var undDecidedPct = Math.round((undecidedDecidedCount / undecidedCount) * 100);
     var undUndecidedPct = 100 - undDecidedPct;
     html +=
-      '<div class="cat-item cat-undecided' + (undSel ? " cat-selected" : "") + '" data-cat="__unknown__">' +
+      '<div class="cat-item cat-undecided' + (undSel ? " cat-selected" : "") + '" data-cat="__unknown__" title="' + undecidedDecidedCount + '/' + undecidedCount + ' decided">' +
       '<div class="cat-icon-col"><span class="cat-icon">' + _ci('<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4"/><circle cx="12" cy="17.5" r="0.4"/>', '#f59e0b', '#ef4444') + '</span><span class="cat-count">' + undecidedCount + '</span></div>' +
       '<div class="cat-right"><span class="cat-name">To decide</span>' +
       '<div class="cat-bar-wrap"><div class="cat-bar cat-und-bar">' +
@@ -2884,7 +2886,7 @@ function renderCategoryChips() {
     var isSel = S.selectedCategories.has(cat);
     var pct = total > 0 ? Math.round((inc / total) * 100) : 0;
     return (
-      '<div class="cat-item' + (isSel ? " cat-selected" : "") + '" data-cat="' + cat + '">' +
+      '<div class="cat-item' + (isSel ? " cat-selected" : "") + '" data-cat="' + cat + '" title="' + inc + '/' + total + ' selected">' +
       '<div class="cat-icon-col"><span class="cat-icon">' + info.icon + '</span><span class="cat-count">' + total + '</span></div>' +
       '<div class="cat-right"><span class="cat-name">' + info.label + '</span>' +
       '<div class="cat-bar-wrap"><div class="cat-bar"><div class="cat-bar-fill" style="width:' + pct + '%"></div></div></div>' +
