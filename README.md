@@ -99,6 +99,16 @@ The agent list grows with every release. [Open an issue](https://github.com/Bogd
 
 ---
 
+## Supported Project Types
+
+repoDNA detects your project type automatically to ensure its manifest and config files are always included in the analysis.
+
+Node.js · Python · Rust · Go · Ruby · PHP · Elixir · Java (Maven) · Java (Gradle) · Android · Kotlin · .NET · C / C++ · Swift · iOS · Flutter · Scala · Unity · Unreal Engine · Godot
+
+Unknown project types still work — source files are picked up by extension and the generic defaults handle the rest. You can also define your own inclusion and exclusion rules per project directly from the UI.
+
+---
+
 ## Analysis Precision
 
 Four modes, selectable per run:
