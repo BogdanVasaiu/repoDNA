@@ -353,15 +353,30 @@ export function detectProjectType(rootFiles) {
     return "PYTHON";
   if (s.has("cargo.toml")) return "RUST";
   if (s.has("pom.xml")) return "JAVA_MAVEN";
+  // Android must come before generic JAVA_GRADLE (it also uses Gradle)
+  if (
+    s.has("local.properties") &&
+    (s.has("build.gradle") || s.has("build.gradle.kts") || s.has("settings.gradle"))
+  )
+    return "ANDROID";
   if (s.has("build.gradle") || s.has("build.gradle.kts")) return "JAVA_GRADLE";
+  if (s.has("build.sbt")) return "SCALA";
   if (s.has("gemfile")) return "RUBY";
   if (s.has("go.mod")) return "GO";
+  if (s.has("mix.exs")) return "ELIXIR";
   if (s.has("composer.json")) return "PHP";
   if (rootFiles.some((f) => f.endsWith(".sln") || f.endsWith(".csproj")))
     return "DOTNET";
+  if (s.has("cmakelists.txt")) return "C_CPP";
   if (rootFiles.some((f) => f.endsWith(".uproject"))) return "UNREAL";
+  // Unity: always has both Assets/ and ProjectSettings/ at root
+  if (s.has("assets") && s.has("projectsettings")) return "UNITY";
+  if (s.has("project.godot")) return "GODOT";
   if (s.has("pubspec.yaml")) return "FLUTTER";
-  if (rootFiles.some((f) => f.endsWith(".xcodeproj"))) return "IOS";
+  // Swift Package Manager (Package.swift) — before Xcode project check
+  if (s.has("package.swift")) return "SWIFT";
+  if (rootFiles.some((f) => f.endsWith(".xcodeproj") || f.endsWith(".xcworkspace")))
+    return "IOS";
   return "UNKNOWN";
 }
 
@@ -500,8 +515,54 @@ const PROJECT_RULES = {
   ANDROID: {
     excludedFolders: [".gradle", "build", "captures", ".idea", "generated"],
     excludedFilenames: [],
-    includedFilenames: [],
+    includedFilenames: ["local.properties", "proguard-rules.pro", "google-services.json"],
     includedExtensions: ["java", "kt", "xml", "gradle", "kts", "pro"],
+  },
+  ELIXIR: {
+    excludedFolders: ["_build", "deps", ".elixir_ls", "cover"],
+    excludedFilenames: [],
+    includedFilenames: ["mix.exs", "mix.lock", ".formatter.exs", ".credo.exs"],
+    includedExtensions: [],
+  },
+  C_CPP: {
+    excludedFolders: ["cmake-build-debug", "cmake-build-release", "CMakeFiles", ".cmake"],
+    excludedFilenames: [],
+    includedFilenames: [
+      "CMakeLists.txt",
+      "Makefile",
+      "makefile",
+      "configure",
+      "configure.ac",
+      "meson.build",
+      "conanfile.txt",
+      "conanfile.py",
+      "vcpkg.json",
+    ],
+    includedExtensions: ["c", "cpp", "cc", "cxx", "h", "hpp", "hxx", "ipp", "inl", "s", "asm"],
+  },
+  SWIFT: {
+    excludedFolders: [".build", ".swiftpm", "DerivedData"],
+    excludedFilenames: [],
+    includedFilenames: ["Package.swift", "Package.resolved", ".swiftlint.yml"],
+    includedExtensions: ["swift"],
+  },
+  UNITY: {
+    excludedFolders: ["Library", "Temp", "Logs", "UserSettings", "Build", "Builds", "obj"],
+    excludedFilenames: [],
+    includedFilenames: [],
+    includedExtensions: ["cs", "shader", "hlsl", "cginc", "glsl", "compute", "asmdef", "asmref"],
+  },
+  SCALA: {
+    excludedFolders: ["target", ".bsp", ".metals", ".scala-build"],
+    excludedFilenames: [],
+    includedFilenames: ["build.sbt", "build.properties", ".scalafmt.conf", ".scalafix.conf"],
+    includedExtensions: ["scala", "sbt", "sc"],
+  },
+  GODOT: {
+    excludedFolders: [".godot"],
+    excludedFilenames: ["export_presets.cfg"],
+    includedFilenames: ["project.godot"],
+    includedExtensions: ["gd", "gdshader", "gdns", "gdnlib", "tscn", "tres", "gdextension"],
   },
 };
 
