@@ -2691,10 +2691,25 @@ function createTreeNode(node, depth, isLast, lineage) {
             S.userOverrides.delete(node.id);
           }
         } else {
-          if (S.userOverrides.has(node.id)) {
-            S.userOverrides.delete(node.id);
+          var cur = getFinalStatus(node);
+          if (cur === "included") {
+            // Visible as included → force-exclude it.
+            // If auto-status is already excluded, just remove the redundant forced-include
+            // override so there's no noise in the overrides map; otherwise set "excluded".
+            if (node.autoStatus === "excluded") {
+              S.userOverrides.delete(node.id);
+            } else {
+              S.userOverrides.set(node.id, "excluded");
+            }
           } else {
-            S.userOverrides.set(node.id, getFinalStatus(node) === "included" ? "excluded" : "included");
+            // Visible as excluded → toggle to included.
+            // If auto-status is already included, just remove the forced-exclude override
+            // (restores the natural included state without a redundant entry).
+            if (node.autoStatus === "included") {
+              S.userOverrides.delete(node.id);
+            } else {
+              S.userOverrides.set(node.id, "included");
+            }
           }
         }
       });
