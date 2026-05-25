@@ -6,6 +6,11 @@ var args = process.argv.slice(2);
 var debugMode = args.includes("--debug");
 var noOpen = args.includes("--no-open");
 
+if (args.includes("--help") || args.includes("-h")) {
+  await import("./help.mjs");
+  process.exit(0);
+}
+
 if (debugMode) {
   process.env.REPODNA_DEBUG = "1";
   console.log(

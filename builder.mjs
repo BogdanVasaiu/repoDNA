@@ -1,57 +1,31 @@
 import { readFileSync, existsSync } from "fs";
 import { join, extname } from "path";
+import { assignCategory } from "./classifier.mjs";
 
 const CATEGORY_META = {
-  stores: { label: "🗄️ Stores", title: "Stores & State" },
-  components_chat: { label: "💬 Chat", title: "Chat Components" },
-  components_dashboards: {
-    label: "📊 Dashboards",
-    title: "Dashboard Components",
-  },
-  components_shared: { label: "🧩 Shared UI", title: "Shared Components" },
-  components_widgets: { label: "🔧 Widgets", title: "Widget Components" },
-  components_other: { label: "📦 Components", title: "Other Components" },
-  composables: { label: "🪝 Composables", title: "Composables & Hooks" },
-  plugins: { label: "⚙️ Plugins", title: "Plugins & Config" },
-  router: { label: "🔀 Router", title: "Router & Routes" },
-  services: { label: "🔌 Services", title: "Services & API" },
-  layouts: { label: "🖼️ Layouts", title: "Layouts & Pages" },
-  styles: { label: "🎨 Styles", title: "Styles & CSS" },
-  utils: { label: "🛠️ Utils", title: "Utilities & Helpers" },
-  types: { label: "📐 Types", title: "TypeScript Types" },
-  tests: { label: "🧪 Tests", title: "Tests" },
-  scripts: { label: "📜 Scripts", title: "Scripts" },
-  assets: { label: "🖼️ Assets", title: "Assets" },
-  other: { label: "📄 Other", title: "Other Files" },
+  "source-code": { label: "💻 Source Code",   title: "Source Code" },
+  config:        { label: "⚙️ Configuration",  title: "Configuration" },
+  docs:          { label: "📄 Documentation",  title: "Documentation" },
+  styles:        { label: "🎨 CSS Styles",     title: "CSS Styles" },
+  templates:     { label: "🖼️ Templates",      title: "Templates" },
+  "data-schema": { label: "🗄️ Data Schema",   title: "Data Schema" },
+  notebooks:     { label: "📓 Notebooks",      title: "Notebooks" },
+  scripts:       { label: "📜 Scripts",        title: "Scripts" },
+  images:        { label: "🖼️ Images",         title: "Images" },
+  svg:           { label: "🔷 SVG",            title: "SVG" },
+  fonts:         { label: "🔤 Fonts",          title: "Fonts" },
+  "audio-video": { label: "🎬 Media",          title: "Media" },
+  archives:      { label: "📦 Archives",       title: "Archives" },
+  locks:         { label: "🔒 Lock files",     title: "Lock Files" },
+  generated:     { label: "⚡ Generated",      title: "Generated Files" },
+  logs:          { label: "📋 Logs",           title: "Logs" },
+  certs:         { label: "🛡️ Certificates",   title: "Certificates" },
+  unknown:       { label: "📄 Other",          title: "Other Files" },
 };
 
 export function categorize(rel) {
-  const r = rel.replace(/\\/g, "/");
-  // Images, fonts, audio and video assets get their own section regardless of folder name
-  if (/\.(svg|png|jpg|jpeg|gif|webp|ico|bmp|tiff|avif|heic|heif|raw|woff2?|ttf|eot|otf|mp4|avi|mov|mkv|webm|mp3|wav|ogg|flac|aac|m4a|opus|aiff)$/i.test(r)) return "assets";
-  if (/\/(stores?|redux|zustand|mobx|jotai|recoil)\//.test(r)) return "stores";
-  if (/\/components\/chat/.test(r)) return "components_chat";
-  if (/\/components\/(dashboard|admin)/.test(r)) return "components_dashboards";
-  if (/\/components\/(shared|common|ui|base)/.test(r))
-    return "components_shared";
-  if (/\/components\/widget/.test(r)) return "components_widgets";
-  if (/\/components\//.test(r)) return "components_other";
-  if (/\/(composables|hooks)\//.test(r)) return "composables";
-  if (/\/(plugins|lib|config)\//.test(r)) return "plugins";
-  if (/\/(router|routes|routing)\//.test(r)) return "router";
-  if (/\/(services|api|client|requests)\//.test(r)) return "services";
-  if (/\/(layouts|templates|pages|views)\//.test(r)) return "layouts";
-  if (/\/(scss|styles?|css)\//.test(r) || /\.(scss|css|less|sass)$/.test(r))
-    return "styles";
-  if (/\/(utils|helpers|shared|common)\//.test(r)) return "utils";
-  if (/\/(types|interfaces)\//.test(r) || r.endsWith(".d.ts")) return "types";
-  if (
-    /\/(tests?|__tests__|spec)\//.test(r) ||
-    /\.(spec|test)\.[tj]sx?$/.test(r)
-  )
-    return "tests";
-  if (/\/scripts\//.test(r) || /\.(sh|bash|zsh|ps1)$/.test(r)) return "scripts";
-  return "other";
+  const ext = extname(rel).replace(/^\./, "");
+  return assignCategory(ext);
 }
 
 // ─── STATIC IMPORT PARSER ────────────────────────────────

@@ -143,6 +143,14 @@ All repoDNA data lives in `~/.repodna/` — never inside your projects. The only
 
 ## Other Commands
 
+**Help** — lists all available commands and their flags:
+
+```bash
+node help.mjs
+# or
+node main.mjs --help
+```
+
 **Debug mode** — writes per-file timing and stats to `repodna-debug.log`:
 
 ```bash

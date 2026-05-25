@@ -2790,25 +2790,40 @@ function renderCategoryChips() {
       if (S.userOverrides.has(n.id)) undecidedDecidedCount++;
     }
   }
+  var _ciN = (_ciN || 0);
+  function _ci(d, ca, cb) {
+    var id = 'cig' + (++_ciN), fi = 'cif' + _ciN;
+    return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
+      '<defs>' +
+      '<linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">' +
+      '<stop offset="0%" stop-color="' + ca + '"/><stop offset="100%" stop-color="' + cb + '"/>' +
+      '</linearGradient>' +
+      '<linearGradient id="' + fi + '" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">' +
+      '<stop offset="0%" stop-color="' + ca + '" stop-opacity="0.18"/><stop offset="100%" stop-color="' + cb + '" stop-opacity="0.18"/>' +
+      '</linearGradient>' +
+      '</defs>' +
+      '<g fill="url(#' + fi + ')" stroke="url(#' + id + ')">' + d + '</g>' +
+      '</svg>';
+  }
   var CL = {
-    "source-code": { icon: "💻", label: "Source Code" },
-    config: { icon: "⚙️", label: "Configuration" },
-    docs: { icon: "📖", label: "Documentation" },
-    styles: { icon: "🎨", label: "CSS Styles" },
-    templates: { icon: "🖼️", label: "Templates" },
-    "data-schema": { icon: "🗄️", label: "Data Schema" },
-    notebooks: { icon: "📓", label: "Notebooks" },
-    scripts: { icon: "📜", label: "Scripts" },
-    images: { icon: "🖼️", label: "Images" },
-    svg: { icon: "✏️", label: "SVG" },
-    fonts: { icon: "🔤", label: "Fonts" },
-    "audio-video": { icon: "🎬", label: "Media" },
-    archives: { icon: "📦", label: "Archives" },
-    locks: { icon: "🔒", label: "Lock files" },
-    generated: { icon: "⚙️", label: "Generated" },
-    logs: { icon: "📋", label: "Logs" },
-    certs: { icon: "🔐", label: "Certificates" },
-    unknown: { icon: "❓", label: "Other" },
+    "source-code": { icon: _ci('<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>', '#4ade80', '#06b6d4'), label: "Source Code" },
+    config:        { icon: _ci('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>', '#94a3b8', '#818cf8'), label: "Configuration" },
+    docs:          { icon: _ci('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>', '#38bdf8', '#818cf8'), label: "Documentation" },
+    styles:        { icon: _ci('<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>', '#f472b6', '#e879f9'), label: "CSS Styles" },
+    templates:     { icon: _ci('<rect x="2" y="2" width="20" height="4" rx="1"/><rect x="2" y="9" width="9" height="8" rx="1"/><rect x="13" y="9" width="9" height="8" rx="1"/><rect x="2" y="20" width="20" height="2" rx="1"/>', '#c084fc', '#818cf8'), label: "Templates" },
+    "data-schema": { icon: _ci('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>', '#fb923c', '#fbbf24'), label: "Data Schema" },
+    notebooks:     { icon: _ci('<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>', '#fbbf24', '#fb923c'), label: "Notebooks" },
+    scripts:       { icon: _ci('<path d="M5 8l6 4-6 4M13 19h8"/>', '#22d3ee', '#4ade80'), label: "Scripts" },
+    images:        { icon: _ci('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>', '#fb7185', '#fb923c'), label: "Images" },
+    svg:           { icon: _ci('<circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><path d="M5 17A12 12 0 0 1 17 5"/>', '#a78bfa', '#f472b6'), label: "SVG" },
+    fonts:         { icon: _ci('<path d="M4 5h16M4 5v3M20 5v3M12 5v16M9 21h6"/>', '#fde68a', '#f59e0b'), label: "Fonts" },
+    "audio-video": { icon: _ci('<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>', '#e879f9', '#c084fc'), label: "Media" },
+    archives:      { icon: _ci('<path d="M1 3h22v5H1z M21 8v13H3V8 M10 12h4"/>', '#fdba74', '#fb923c'), label: "Archives" },
+    locks:         { icon: _ci('<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>', '#ef4444', '#f97316'), label: "Lock files" },
+    generated:     { icon: _ci('<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>', '#818cf8', '#c084fc'), label: "Generated" },
+    logs:          { icon: _ci('<path d="M4 4h16v3H4zM4 10h12M4 14h14M4 18h9M4 21h12"/>', '#a3e635', '#4ade80'), label: "Logs" },
+    certs:         { icon: _ci('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', '#fcd34d', '#fb923c'), label: "Certificates" },
+    unknown:       { icon: _ci('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>', '#64748b', '#94a3b8'), label: "Other" },
   };
   var entries = Object.entries(catTotal)
     .filter(function (e) { return e[1] > 0; })
@@ -2841,7 +2856,7 @@ function renderCategoryChips() {
     var newPct = newCount > 0 ? Math.round((newIncluded / newCount) * 100) : 0;
     html +=
       '<div class="cat-item cat-new' + (newSel ? " cat-selected" : "") + '" data-cat="__new__">' +
-      '<div class="cat-icon-col"><span class="cat-icon">✨</span><span class="cat-count">' + newCount + '</span></div>' +
+      '<div class="cat-icon-col"><span class="cat-icon">' + _ci('<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>', '#7dd3fc', '#c084fc') + '</span><span class="cat-count">' + newCount + '</span></div>' +
       '<div class="cat-right"><span class="cat-name cat-new-name">New</span>' +
       '<div class="cat-bar-wrap"><div class="cat-bar cat-new-bar"><div class="cat-bar-fill cat-new-bar-fill" style="width:' + newPct + '%"></div></div></div>' +
       '</div>' + makeBulkMenuHtml("__new__") + '</div>';
@@ -2852,7 +2867,7 @@ function renderCategoryChips() {
     var undUndecidedPct = 100 - undDecidedPct;
     html +=
       '<div class="cat-item cat-undecided' + (undSel ? " cat-selected" : "") + '" data-cat="__unknown__">' +
-      '<div class="cat-icon-col"><span class="cat-icon">⚠️</span><span class="cat-count">' + undecidedCount + '</span></div>' +
+      '<div class="cat-icon-col"><span class="cat-icon">' + _ci('<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4"/><circle cx="12" cy="17.5" r="0.4"/>', '#f59e0b', '#ef4444') + '</span><span class="cat-count">' + undecidedCount + '</span></div>' +
       '<div class="cat-right"><span class="cat-name">To decide</span>' +
       '<div class="cat-bar-wrap"><div class="cat-bar cat-und-bar">' +
       '<div class="cat-und-decided-fill" style="width:' + undDecidedPct + '%"></div>' +
@@ -4770,24 +4785,40 @@ function onDone() {
 // ═══════════════════════════════════════════════════════════
 // RESULTS TABS
 // ═══════════════════════════════════════════════════════════
+var _mkIcoN = 0;
+function _mkIco(d, ca, cb) {
+  var id = 'ti' + (++_mkIcoN), fi = 'tf' + _mkIcoN;
+  return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;pointer-events:none">' +
+    '<defs>' +
+    '<linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">' +
+    '<stop offset="0%" stop-color="' + ca + '"/><stop offset="100%" stop-color="' + cb + '"/>' +
+    '</linearGradient>' +
+    '<linearGradient id="' + fi + '" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">' +
+    '<stop offset="0%" stop-color="' + ca + '" stop-opacity="0.18"/><stop offset="100%" stop-color="' + cb + '" stop-opacity="0.18"/>' +
+    '</linearGradient>' +
+    '</defs>' +
+    '<g fill="url(#' + fi + ')" stroke="url(#' + id + ')">' + d + '</g>' +
+    '</svg>';
+}
 var CAT_LABELS = {
-  stores: "🗄️ Stores",
-  components_chat: "💬 Chat",
-  components_dashboards: "📊 Dashboards",
-  components_shared: "🧩 Shared",
-  components_widgets: "🔧 Widgets",
-  components_other: "📦 Components",
-  composables: "🪝 Composables",
-  plugins: "⚙️ Plugins",
-  router: "🔀 Router",
-  services: "🔌 Services",
-  layouts: "🖼️ Layouts",
-  styles: "🎨 Styles",
-  utils: "🛠️ Utils",
-  types: "📐 Types",
-  tests: "🧪 Tests",
-  scripts: "📜 Scripts",
-  other: "📄 Other",
+  "source-code": _mkIco('<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>', '#4ade80', '#06b6d4') + ' Source Code',
+  config:        _mkIco('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>', '#94a3b8', '#818cf8') + ' Configuration',
+  docs:          _mkIco('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>', '#38bdf8', '#818cf8') + ' Documentation',
+  styles:        _mkIco('<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>', '#f472b6', '#e879f9') + ' CSS Styles',
+  templates:     _mkIco('<rect x="2" y="2" width="20" height="4" rx="1"/><rect x="2" y="9" width="9" height="8" rx="1"/><rect x="13" y="9" width="9" height="8" rx="1"/><rect x="2" y="20" width="20" height="2" rx="1"/>', '#c084fc', '#818cf8') + ' Templates',
+  "data-schema": _mkIco('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>', '#fb923c', '#fbbf24') + ' Data Schema',
+  notebooks:     _mkIco('<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>', '#fbbf24', '#fb923c') + ' Notebooks',
+  scripts:       _mkIco('<path d="M5 8l6 4-6 4M13 19h8"/>', '#22d3ee', '#4ade80') + ' Scripts',
+  images:        _mkIco('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>', '#fb7185', '#fb923c') + ' Images',
+  svg:           _mkIco('<circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><path d="M5 17A12 12 0 0 1 17 5"/>', '#a78bfa', '#f472b6') + ' SVG',
+  fonts:         _mkIco('<path d="M4 5h16M4 5v3M20 5v3M12 5v16M9 21h6"/>', '#fde68a', '#f59e0b') + ' Fonts',
+  "audio-video": _mkIco('<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>', '#e879f9', '#c084fc') + ' Media',
+  archives:      _mkIco('<path d="M1 3h22v5H1z M21 8v13H3V8 M10 12h4"/>', '#fdba74', '#fb923c') + ' Archives',
+  locks:         _mkIco('<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>', '#ef4444', '#f97316') + ' Lock files',
+  generated:     _mkIco('<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>', '#818cf8', '#c084fc') + ' Generated',
+  logs:          _mkIco('<path d="M4 4h16v3H4zM4 10h12M4 14h14M4 18h9M4 21h12"/>', '#a3e635', '#4ade80') + ' Logs',
+  certs:         _mkIco('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>', '#fcd34d', '#fb923c') + ' Certificates',
+  unknown:       _mkIco('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>', '#64748b', '#94a3b8') + ' Other',
 };
 
 // Discard any in-progress card edits across the results panel. Called when the
@@ -4845,7 +4876,26 @@ function renderTabs() {
   ).file
     .split("/")
     .pop();
-  previewTab.innerHTML = "📄 " + _previewLabel + liveDot;
+  var _t = Date.now() / 1000;
+  var _glowDelay = (-(_t % 3)).toFixed(3) + 's';
+  var _ctxIco = '<svg class="tab-ctx-ico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="animation-delay:' + _glowDelay + ';pointer-events:none">'
+    + '<defs>'
+    + '<linearGradient id="ctx-g" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">'
+    + '<stop offset="0%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#818cf8"/>'
+    + '</linearGradient>'
+    + '<linearGradient id="ctx-f" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">'
+    + '<stop offset="0%" stop-color="#38bdf8" stop-opacity="0.15"/><stop offset="100%" stop-color="#818cf8" stop-opacity="0.15"/>'
+    + '</linearGradient>'
+    + '</defs>'
+    + '<rect fill="url(#ctx-f)" stroke="url(#ctx-g)" x="4" y="2" width="16" height="20" rx="2"/>'
+    + '<g fill="none" stroke="url(#ctx-g)" stroke-width="1.8" opacity="0.5">'
+    + '<line x1="7" y1="9"  x2="17" y2="9"/>'
+    + '<line x1="7" y1="13" x2="17" y2="13"/>'
+    + '<line x1="7" y1="17" x2="12" y2="17"/>'
+    + '</g>'
+    + '<rect class="ctx-cursor" x="13" y="15.5" width="1.5" height="3" fill="#7dd3fc" stroke="none"/>'
+    + '</svg>';
+  previewTab.innerHTML = _ctxIco + '<span class="ctx-lbl">' + _previewLabel + '</span>' + liveDot;
   previewTab.addEventListener("click", function () {
     if (S.activeTabIsPreview) return;
     _discardActiveEdits();
