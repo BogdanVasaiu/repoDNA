@@ -2778,14 +2778,17 @@ function renderCategoryChips() {
   var container = document.getElementById("category-list");
   if (!container) return;
   var catTotal = {}, catIncluded = {};
-  var undecidedCount = 0;
+  var undecidedCount = 0, undecidedDecidedCount = 0;
   for (var i = 0; i < S.flatNodes.length; i++) {
     var n = S.flatNodes[i];
     if (n.type !== "file") continue;
     var cat = n.categoryId || "unknown";
     catTotal[cat] = (catTotal[cat] || 0) + 1;
     if (getFinalStatus(n) === "included") catIncluded[cat] = (catIncluded[cat] || 0) + 1;
-    if (n.autoStatus === "ambiguous") undecidedCount++;
+    if (n.autoStatus === "ambiguous") {
+      undecidedCount++;
+      if (S.userOverrides.has(n.id)) undecidedDecidedCount++;
+    }
   }
   var CL = {
     "source-code": { icon: "💻", label: "Source Code" },
@@ -2845,10 +2848,17 @@ function renderCategoryChips() {
   }
   if (undecidedCount > 0) {
     var undSel = S.selectedCategories.has("__unknown__");
+    var undDecidedPct = Math.round((undecidedDecidedCount / undecidedCount) * 100);
+    var undUndecidedPct = 100 - undDecidedPct;
     html +=
       '<div class="cat-item cat-undecided' + (undSel ? " cat-selected" : "") + '" data-cat="__unknown__">' +
       '<div class="cat-icon-col"><span class="cat-icon">⚠️</span><span class="cat-count">' + undecidedCount + '</span></div>' +
-      '<div class="cat-right"><span class="cat-name">To decide</span></div>' +
+      '<div class="cat-right"><span class="cat-name">To decide</span>' +
+      '<div class="cat-bar-wrap"><div class="cat-bar cat-und-bar">' +
+      '<div class="cat-und-decided-fill" style="width:' + undDecidedPct + '%"></div>' +
+      '<div class="cat-und-undecided-fill" style="width:' + undUndecidedPct + '%"></div>' +
+      '</div></div>' +
+      '</div>' +
       makeBulkMenuHtml("__unknown__") +
       '</div>';
   }

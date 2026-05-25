@@ -548,6 +548,9 @@ select.input { cursor: pointer; }
 .cat-item.cat-undecided .cat-name { color: var(--amb); }
 .cat-item.cat-undecided .cat-count { color: var(--amb); }
 .cat-item.cat-undecided.cat-selected { background: var(--amb-dim); border-color: rgba(245,158,11,.2); }
+.cat-und-bar { display: flex; background: transparent; }
+.cat-und-decided-fill { height: 100%; background: var(--blue); transition: width .3s ease; }
+.cat-und-undecided-fill { height: 100%; background: rgba(245,158,11,.35); transition: width .3s ease; }
 /* Quiet separator between special pinned chips and regular categories */
 .cat-new + .cat-item:not(.cat-new):not(.cat-undecided),
 .cat-undecided + .cat-item:not(.cat-new):not(.cat-undecided) { margin-top: 14px; }
@@ -862,9 +865,9 @@ select.input { cursor: pointer; }
 }
 .tree-badge.auto-exc { color: rgba(248,113,113,.7); border-color: rgba(248,113,113,.18); background: rgba(248,113,113,.04); }
 .tree-badge.amb      { color: var(--amb); border-color: rgba(245,158,11,.25); background: var(--amb-dim); }
-.tree-badge.user-inc { color: var(--man); border-color: rgba(129,140,248,.25); background: var(--man-dim); }
-/* "decided ✗" — same purple treatment as "decided ✓"; they're paired user decisions. */
-.tree-badge.user-exc { color: var(--man); border-color: rgba(129,140,248,.25); background: var(--man-dim); }
+.tree-badge.user-inc { color: var(--blue); border-color: rgba(96,165,250,.25); background: rgba(96,165,250,.08); }
+/* "decided ✗" — same blue treatment as "decided ✓"; they're paired user decisions. */
+.tree-badge.user-exc { color: var(--blue); border-color: rgba(96,165,250,.25); background: rgba(96,165,250,.08); }
 .tree-badge.tree-badge-new { color: #7dd3fc; border-color: rgba(125,211,252,.35); background: rgba(125,211,252,.08); font-weight: 600; }
 
 /* Directory inline action buttons — appear on hover */
