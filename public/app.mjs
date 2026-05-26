@@ -532,7 +532,8 @@ var FOLDER_COLORS = {
   plugins: "#f59e0b",
 };
 function getFolderColor(name) {
-  return "#f472b6";
+
+  return "#ffc972";
 }
 function escHtml(s) {
   return (s || "")
@@ -653,6 +654,16 @@ function _revealApp() {
 // ═══════════════════════════════════════════════════════════
 var es = null;
 var _sseReconnectTimer = null;
+var _ranThisSession = false;
+
+function _markChangesApplied() {
+  if (S.runPhase !== "done") return;
+  var _lbl = (AGENT_TARGETS[S.agentTarget] || AGENT_TARGETS.claude).file.split("/").pop();
+  var _sub = "Changes applied · " + _lbl + " saved";
+  var msgEl = document.querySelector("#progress-done-msg span");
+  if (msgEl) msgEl.textContent = _sub;
+  try { localStorage.setItem("repodna_done:" + (S.projectPath || ""), JSON.stringify({ msg: _sub, noChanges: false })); } catch(e) {}
+}
 var _sseBackoff = 3000; // ms, grows on repeated failure, capped at 30s
 function connectSSE() {
   // Cancel any pending reconnect and close the previous EventSource
@@ -726,6 +737,7 @@ function connectSSE() {
     if (dash) dash.classList.remove("run-paused", "run-done");
     if (d.phase === "running") {
       S.runPhase = "running";
+      _ranThisSession = true;
       if (!S.dashboardShown) showDashboard();
       updateRunControls();
       _startElapsedTimer();
@@ -1081,9 +1093,17 @@ function renderFileList() {
   if (!container) return;
   container.innerHTML = "";
   var badge = document.getElementById("file-run-count");
-  if (S.fileList.length === 0 && S.runPhase !== "idle") {
+  if (!_ranThisSession && S.runPhase === "done" && S.fileList.length > 0) {
+    if (badge) badge.textContent = S.fileList.length;
+    return;
+  }
+  if (S.fileList.length === 0 && S.runPhase !== "idle" && S.retriedFileIds.size === 0) {
     container.innerHTML =
       '<div style="color:var(--t4);font-size:11px;padding:10px;font-family:var(--mono);text-align:center">✓ No changed files — all results from cache</div>';
+    if (badge) badge.textContent = "0";
+    return;
+  }
+  if (S.fileList.length === 0 && S.runPhase !== "idle") {
     if (badge) badge.textContent = "0";
     return;
   }
@@ -1112,7 +1132,7 @@ function createFileRow(fid) {
     retryBtn = "";
   } else if (isRetrying) {
     retryBtn = '<button class="frun-stop" title="Stop this file" onclick="_stopFile(\'' +
-      escHtml(fid) + "')\">■ stop</button>";
+      escHtml(fid) + "')\">■</button>";
   } else if (isMainRunning) {
     // File is being processed by the main scanner — stopping a single file
     // there would require aborting the whole runner. Hide the button so the
@@ -1120,7 +1140,7 @@ function createFileRow(fid) {
     retryBtn = "";
   } else {
     retryBtn = '<button class="frun-retry" title="Retry this file" onclick="_retryFile(\'' +
-      escHtml(fid) + "')\">↺ retry</button>";
+      escHtml(fid) + "')\">↺</button>";
   }
 
   var changeType = S.fileChangeTypes[fid]; // 'created'|'modified'|'readded'|'removed'|'retried'|'edited'|undefined
@@ -1134,15 +1154,15 @@ function createFileRow(fid) {
   };
   var changeBadge = changeBadgeMap[changeType] || "";
 
+  row.title = fid;
+
   // Main line: status icon + change badge + file-type badge + name + retry
   var mainLine =
     '<div class="frun-row-main">' +
     '<span class="' + statusClass + '">' + statusIcon + "</span>" +
     changeBadge +
     getFileBadge(ext) +
-    '<span class="frun-name' + (isDeleted ? " frun-name-deleted" : "") + '" title="' +
-    escHtml(fid) +
-    '">' +
+    '<span class="frun-name' + (isDeleted ? " frun-name-deleted" : "") + '">' +
     escHtml(fid) +
     "</span>" +
     retryBtn +
@@ -1225,6 +1245,8 @@ window._retryFile = async function (fid, precision) {
     updateFileRow(fid);
   }
   S.retryingFiles.delete(fid);
+  _markChangesApplied();
+  renderFileList();
 };
 
 window._stopFile = async function (fid) {
@@ -4627,9 +4649,9 @@ window._exitToStart = async function () {
   document.getElementById("dash-top").classList.remove("done");
   document.getElementById("progress-fill").style.width = "0%";
   document.getElementById("progress-label").textContent = "Waiting…";
+  document.querySelector("#progress-done-msg span").textContent = "Analysis Complete!";
   var _nb = document.getElementById("btn-new-analysis");
   if (_nb) _nb.classList.remove("done");
-  document.getElementById("current-file").textContent = "";
   // Switch to wizard at page 0
   document.getElementById("dashboard").classList.remove("visible");
   document.getElementById("wizard").style.display = "";
@@ -4763,10 +4785,8 @@ function updateProgress(d) {
 
   if (typeof d.deletedCount === "number") S.deletedCount = d.deletedCount;
 
-  if (d.current)
-    document.getElementById("current-file").textContent = "→ " + d.current;
   if (d.status === "done") {
-    document.getElementById("current-file").textContent = "";
+    // handled by onDone()
   }
 }
 
@@ -4781,31 +4801,37 @@ function onDone() {
   var newBtn = document.getElementById("btn-new-analysis");
   if (newBtn) newBtn.classList.add("done");
 
-  var total = parseInt(document.getElementById("s-done").textContent) || 0;
-  var errors = parseInt(document.getElementById("s-errors").textContent) || 0;
+  var _fileLabel = (AGENT_TARGETS[S.agentTarget] || AGENT_TARGETS.claude).file.split("/").pop();
+  var _doneKey = "repodna_done:" + (S.projectPath || "");
   var sub;
-  if (total === 0 && S.previewContent) {
-    var _cachedLabel = (
-      AGENT_TARGETS[S.agentTarget] || AGENT_TARGETS.claude
-    ).file.split("/").pop();
-    if (S.deletedCount > 0) {
-      var _dn = S.deletedCount;
-      sub = "✓ " + _dn + " file" + (_dn > 1 ? "s" : "") + " deleted — " + _cachedLabel + " rebuilt from cache";
-    } else {
-      sub = "✓ No changes detected — " + _cachedLabel + " rebuilt from cache";
-    }
-  } else if (total === 0) {
-    sub = "⚠ No files to process — check file selection";
-    var panel = document.getElementById("preview-panel");
-    if (panel)
-      panel.innerHTML =
-        '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">No files to process.<br>Check your file selection or smart update rules.</div></div>';
+  var _noChanges = false;
+  if (!_ranThisSession) {
+    try { var _sv = JSON.parse(localStorage.getItem(_doneKey)); sub = _sv && _sv.msg; _noChanges = !!(_sv && _sv.noChanges); } catch(e) {}
+    if (!sub) sub = "Analysis complete · " + _fileLabel + " saved";
   } else {
-    var _doneLabel = (AGENT_TARGETS[S.agentTarget] || AGENT_TARGETS.claude).file
-      .split("/").pop();
-    sub = total + " files · " + errors + " errors · " + _doneLabel + " saved";
+    var total = parseInt(document.getElementById("s-done").textContent) || 0;
+    var errors = parseInt(document.getElementById("s-errors").textContent) || 0;
+    if (total === 0 && S.previewContent) {
+      if (S.deletedCount > 0) {
+        var _dn = S.deletedCount;
+        sub = "Changes applied · " + _dn + " file" + (_dn > 1 ? "s" : "") + " deleted · " + _fileLabel + " rebuilt";
+      } else {
+        sub = "✓ No changes detected — " + _fileLabel + " rebuilt from cache";
+        _noChanges = true;
+      }
+    } else if (total === 0) {
+      sub = "⚠ No files to process — check file selection";
+      var panel = document.getElementById("preview-panel");
+      if (panel)
+        panel.innerHTML =
+          '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">No files to process.<br>Check your file selection or smart update rules.</div></div>';
+    } else {
+      sub = "Analysis complete" + (errors > 0 ? " · " + errors + " errors" : "") + " · " + _fileLabel + " saved";
+    }
+    try { localStorage.setItem(_doneKey, JSON.stringify({ msg: sub, noChanges: _noChanges })); } catch(e) {}
   }
-  document.getElementById("current-file").textContent = sub;
+  document.querySelector("#progress-done-msg span").textContent = sub;
+  if (!_ranThisSession && _noChanges) renderFileList();
   updateRunControls();
 }
 // ═══════════════════════════════════════════════════════════
@@ -4978,7 +5004,7 @@ function createResultCard(item, cat) {
   card.innerHTML =
     '<div class="result-card-head">' +
     getFileBadge(ext ? ext[1] : "") +
-    '<span class="result-card-filename">' +
+    '<span class="result-card-filename" title="' + escHtml(item.file) + '">' +
     escHtml(item.file) +
     '</span>' +
     metaBadge +
@@ -5122,6 +5148,7 @@ window._applyResultEdit = async function(btn) {
     });
   } catch (e) {}
 
+  _markChangesApplied();
   // Exit edit mode and re-render the body as markdown
   card.dataset.editing = 'false';
   var bodyDiv = card.querySelector('.result-card-body');

@@ -88,6 +88,7 @@ var appState = {
   done: 0,
   errors: 0,
   current: "",
+  elapsed: 0,
   log: [], // ALL logs ever (for full replay)
   currentRunLogStart: 0, // index in log[] where current run starts
   results: {},
@@ -110,6 +111,9 @@ var scanCache = {};
 var completedFiles = new Set();
 
 function push(event, data) {
+  if (event === "progress" && typeof data.elapsed === "number") {
+    appState.elapsed = data.elapsed;
+  }
   var msg = "event: " + event + "\ndata: " + JSON.stringify(data) + "\n\n";
   for (var i = 0; i < sseClients.length; i++) {
     try {
@@ -1240,9 +1244,9 @@ export function startServer() {
           );
         } // 8. Current progress
 
-        var elapsed = appState.sessionStartedAt
+        var elapsed = (appState.phase === "running" && appState.sessionStartedAt)
           ? Math.round((Date.now() - appState.sessionStartedAt) / 1000)
-          : 0;
+          : appState.elapsed;
         res.write(
           "event: progress\ndata: " +
             JSON.stringify({

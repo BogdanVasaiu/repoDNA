@@ -789,7 +789,8 @@ select.input { cursor: pointer; }
 .tree-guide::after {
   content: ''; position: absolute;
   left: 9px; top: 0; bottom: 0;
-  border-left: 1px solid var(--b3);
+  border-left: 1px solid transparent;
+  transition: border-color .15s;
 }
 /* Empty: ancestor at this level was the last child, no pipe carried down */
 .tree-guide-empty::after { display: none; }
@@ -800,8 +801,12 @@ select.input { cursor: pointer; }
   content: ''; position: absolute;
   left: 9px; right: -2px;
   top: 50%;
-  border-top: 1px solid var(--b3);
+  border-top: 1px solid transparent;
+  transition: border-color .15s;
 }
+/* Reveal branches when the cursor is anywhere inside the tree container */
+.tree-wrap:hover .tree-guide::after { border-left-color: var(--b3); }
+.tree-wrap:hover .tree-guide-branch::before { border-top-color: var(--b3); }
 /* Last child: vertical pipe stops at the arm (└── shape) */
 .tree-guide-branch.tree-guide-last::after {
   bottom: auto; height: 50%;
@@ -821,8 +826,10 @@ select.input { cursor: pointer; }
   position: absolute;
   left: -2px; right: -2px;
   top: 50%; height: 1px;
-  background: var(--b3);
+  background: transparent;
+  transition: background .15s;
 }
+.tree-wrap:hover .tree-toggle-file::before { background: var(--b3); }
 
 /* Checkbox — clean bordered square */
 .tree-checkbox {
@@ -944,8 +951,10 @@ select.input { cursor: pointer; }
   padding: 32px 20px; height: 48px;
   flex-shrink: 0; width: 100%; max-width: 1280px; box-sizing: border-box;
 }
-.progress-track { flex: 1; height: 4px; background: var(--b2); border-radius: 99px; overflow: hidden; }
-.progress-fill { height: 100%; background: linear-gradient(90deg, #0ea5e9, var(--a)); border-radius: 99px; transition: width .4s ease; }
+.progress-track { flex: 1; height: 6px; background: var(--b2); border-radius: 99px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #0ea5e9 0%, var(--a) 100%); border-radius: 99px; transition: width .4s ease; position: relative; overflow: hidden; }
+.progress-fill::after { content: ''; position: absolute; top: 0; bottom: 0; width: 80px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent); animation: bar-shimmer 1.8s ease-in-out infinite; }
+@keyframes bar-shimmer { 0% { left: -80px; } 100% { left: 100%; } }
 .progress-label { font-family: var(--mono); font-size: 11px; color: var(--t2); white-space: nowrap; }
 .stat-chips {
   display: flex; gap: 0;
@@ -972,7 +981,7 @@ select.input { cursor: pointer; }
   background: var(--s2); color: var(--t3);
   font-size: 11px; font-family: var(--font); font-weight: 500;
   cursor: pointer; display: flex; align-items: center; gap: 7px;
-  padding: 0 13px; white-space: nowrap; transition: all .12s;
+  padding: 0 8px; white-space: nowrap; transition: all .12s;
 }
 .find-card-btn:hover { color: var(--t1); background: var(--s3); }
 .find-card-btn svg { opacity: .6; }
@@ -1006,17 +1015,23 @@ select.input { cursor: pointer; }
 }
 .find-card-search::placeholder { color: var(--t4); }
 .fc-mode-toggle {
-  display: flex; border: 1px solid var(--b1); border-radius: 5px;
-  overflow: hidden; margin-left: auto; flex-shrink: 0;
+  display: flex; gap: 2px; padding: 2px;
+  background: var(--bg); border: 1px solid var(--b2); border-radius: 8px;
+  margin-left: auto; flex-shrink: 0;
 }
 .fc-mode-btn {
-  border: none; background: transparent; color: var(--t4);
-  font-size: 10px; font-family: var(--font); font-weight: 500;
-  padding: 3px 9px; cursor: pointer; transition: all .12s;
+  border: none; background: transparent; color: var(--t3);
+  font-size: 11px; font-family: var(--font); font-weight: 500;
+  padding: 4px 12px; cursor: pointer; border-radius: 6px;
+  transition: color .15s, background .15s, box-shadow .15s;
+  white-space: nowrap;
+  width: 70px;
 }
-.fc-mode-btn:not(:last-child) { border-right: 1px solid var(--b1); }
 .fc-mode-btn:hover { color: var(--t2); background: var(--s3); }
-.fc-mode-btn.active { color: var(--t1); background: var(--s3); }
+.fc-mode-btn.active {
+  color: var(--t1); background: var(--s4);
+  box-shadow: 0 1px 3px rgba(0,0,0,.5), 0 0 0 1px var(--b3);
+}
 .find-card-close {
   background: none; border: none; color: var(--t4); cursor: pointer;
   font-size: 16px; padding: 2px 6px; border-radius: 4px; line-height: 1;
@@ -1147,7 +1162,6 @@ select.input { cursor: pointer; }
 .ctrl-stop:hover  { background: rgba(248,113,113,.16); }
 
 
-.current-file-label { font-family: var(--mono); font-size: 10px; color: var(--t3); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--t4); flex-shrink: 0; }
 .status-dot.running { background: var(--a); box-shadow: 0 0 8px var(--a); animation: pulse 1.2s infinite; }
 .status-dot.paused  { background: var(--amb); box-shadow: 0 0 6px var(--amb); }
@@ -1469,8 +1483,9 @@ select.input { cursor: pointer; }
 #dash-top.done .progress-label { display: none; }
 
 #progress-done-msg {
-  display: none; flex: 1; align-items: center; overflow: hidden;
+  display: none; flex: 1; align-items: center;
 }
+#dash-top.done .spacer { display: none; }
 #dash-top.done #progress-done-msg {
   display: flex;
   animation: complete-slide-in .5s cubic-bezier(.34,1.56,.64,1) .3s both;
@@ -1811,11 +1826,11 @@ select.input { cursor: pointer; }
 .frun-change-retried  { color: #c084fc; }
 .frun-change-edited   { color: #38bdf8; }
 .frun-error-line { font-size: 10px; color: var(--err); opacity: .85; padding-left: 21px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.frun-retry { margin-left: auto; flex-shrink: 0; background: none; border: 1px solid var(--b2); border-radius: var(--r-sm); color: var(--t3); font-size: 10px; padding: 2px 8px; cursor: pointer; transition: all .12s; font-family: var(--mono); }
+.frun-retry { margin-left: auto; flex-shrink: 0; background: none; border: 1px solid var(--b2); border-radius: var(--r-xs); color: var(--t3); font-size: 13px; width: 20px; height: 20px; padding: 0 0 2px 0; cursor: pointer; transition: all .12s; font-family: var(--mono); display: flex; align-items: center; justify-content: center; line-height: 0; }
 .frun-retry:hover { border-color: var(--a); color: var(--a); background: var(--inc-dim); }
 .file-run-row.file-run-error .frun-retry { border-color: rgba(248,113,113,.4); color: var(--err); }
 .file-run-row.file-run-error .frun-retry:hover { background: rgba(248,113,113,.08); }
-.frun-stop { margin-left: auto; flex-shrink: 0; background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.4); border-radius: var(--r-sm); color: var(--err); font-size: 10px; padding: 2px 8px; cursor: pointer; transition: all .12s; font-family: var(--mono); }
+.frun-stop { margin-left: auto; flex-shrink: 0; background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.4); border-radius: var(--r-xs); color: var(--err); font-size: 10px; width: 20px; height: 20px; padding: 0 0 2px 0; cursor: pointer; transition: all .12s; font-family: var(--mono); display: flex; align-items: center; justify-content: center; line-height: 0; }
 .frun-stop:hover { background: rgba(248,113,113,.16); border-color: var(--err); }
 /* ═══════════════════════════════════════════════════════════
    AGENT SELECTOR (page 4)
