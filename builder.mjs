@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from "fs";
-import { join, extname } from "path";
+import { join, extname, dirname, relative as relPath } from "path";
 import { assignCategory } from "./classifier.mjs";
 
 const CATEGORY_META = {
@@ -217,10 +217,39 @@ export function buildClaudeMd(results, config, fileList = [], projectRoot = "", 
   const cleanNone = (s) =>
     s.replace(/(\*\*[^*\n]+\*\*:)\s*\[none\]/gi, "$1 none");
 
+  // Safety net for cached items from runs that predate the model-output
+  // sanitizer: walk lines, balance fences, and close any open fence when a
+  // **Field:** label appears (field labels can't be inside a code block).
+  const balanceFences = (s) => {
+    if (!s) return s;
+    const ls = s.split(/\r?\n/);
+    let inFence = false, fenceCh = "", fenceLen = 0;
+    const out = [];
+    for (const line of ls) {
+      const fm = line.match(/^( {0,3})(`{3,}|~{3,})/);
+      if (fm) {
+        const fc = fm[2][0], fl = fm[2].length;
+        if (!inFence) { inFence = true; fenceCh = fc; fenceLen = fl; }
+        else if (fc === fenceCh && fl >= fenceLen) { inFence = false; }
+        out.push(line);
+        continue;
+      }
+      if (inFence && /^\*\*[^*\n]{1,40}:\*\*/.test(line)) {
+        out.push(fenceCh === "~" ? "~~~" : "```");
+        inFence = false; fenceCh = ""; fenceLen = 0;
+      }
+      out.push(line);
+    }
+    if (inFence) out.push(fenceCh === "~" ? "~~~" : "```");
+    return out.join("\n");
+  };
+
+  const sanitizeItem = (s) => balanceFences(cleanNone(s));
+
   const section = (title, key) => {
     const items = results[key] || [];
     if (!items.length) return "";
-    return `\n## ${title}\n\n${items.map(cleanNone).join("\n\n---\n\n")}\n`;
+    return `\n## ${title}\n\n${items.map(sanitizeItem).join("\n\n---\n\n")}\n`;
   };
   const desc = config.projectDescription || "No description provided.";
   const sections = Object.keys(CATEGORY_META)

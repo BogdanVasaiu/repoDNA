@@ -296,6 +296,132 @@ function detectAndFixLoop(text) {
   return text;
 }
 
+// ─── STRUCTURE SANITIZER ──────────────────────────────────
+// Weak models commonly leave a code fence (``` or ~~~) unclosed at the end
+// of their output. When file sections get joined into CLAUDE.md, that
+// dangling fence swallows the next file's content — and sometimes the
+// document footer — producing nonsensical edges in the rendered preview.
+// Likewise, stray h1/h2/h3 headers inside the body would break the section
+// parser that anchors files by their `### \`path\`` header.
+function sanitizeStructure(text) {
+  if (!text) return text;
+
+  // Single pass: walk lines tracking fence state, and at every field-label
+  // boundary (e.g. "**Watch out:**" at column 0) close any open fence first.
+  // Field labels can't legitimately appear inside a code block — if a fence
+  // looks open at that point, the model forgot a closer earlier.
+  var lines = text.split(/\r?\n/);
+  var inFence = false;
+  var fenceCh = "";
+  var fenceLen = 0;
+  var out = [];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var fm = line.match(/^( {0,3})(`{3,}|~{3,})/);
+    if (fm) {
+      var fc = fm[2][0], fl = fm[2].length;
+      if (!inFence) { inFence = true; fenceCh = fc; fenceLen = fl; }
+      else if (fc === fenceCh && fl >= fenceLen) { inFence = false; }
+      out.push(line);
+      continue;
+    }
+    // Field label at column 0: "**Something:**" — close any leaking fence.
+    if (inFence && /^\*\*[^*\n]{1,40}:\*\*/.test(line)) {
+      out.push(fenceCh === "~" ? "~~~" : "```");
+      inFence = false;
+      fenceCh = "";
+      fenceLen = 0;
+      out.push(line);
+      continue;
+    }
+    if (!inFence) {
+      // Demote stray top-level headers (h1/h2/h3) to h4. The canonical file
+      // header is prepended by the caller; anything stronger inside the
+      // body would create a fake section in the assembled CLAUDE.md.
+      line = line.replace(/^(#{1,3})([ \t]+\S)/, "####$2");
+    }
+    out.push(line);
+  }
+  // If we still finished inside a fence, close it.
+  if (inFence) {
+    out.push(fenceCh === "~" ? "~~~" : "```");
+  }
+  return out.join("\n");
+}
+
+// ─── STRUCTURE VALIDATOR ──────────────────────────────────
+// After postProcess() runs, every legitimate response must hit a few
+// hard structural marks. If it doesn't, we know the model went off-template
+// and a retry is worth attempting. The validator only reports — it does
+// not mutate text.
+var REQUIRED_FIELDS_BY_TIER = {
+  fast:     ["Role", "Exports"],
+  standard: ["Role", "Key exports", "Non-obvious deps", "Watch out"],
+  deep:     ["Role", "Key exports", "Non-obvious deps", "Side effects", "Architecture", "Watch out"],
+};
+
+// Allowed bold field labels at column 0. Plurals included because models drift.
+var ALLOWED_LABELS = new Set([
+  "Role", "Exports", "Export", "Key exports", "Key export",
+  "Non-obvious deps", "Non-obvious dep",
+  "Watch out", "Side effects", "Side effect", "Architecture",
+]);
+
+function _norm(label) { return label.replace(/s$/, "").toLowerCase(); }
+
+function validateModelOutput(text, tier) {
+  var reasons = [];
+  if (!text || text.trim().length < 60) {
+    return { ok: false, reasons: ["output is too short — likely truncated or empty"] };
+  }
+
+  // Collect every bold field label that appears at column 0.
+  var labelRe = /^\*\*([^*\n]{1,40}):\*\*/gm;
+  var foundLabels = [];
+  var m;
+  while ((m = labelRe.exec(text)) !== null) foundLabels.push(m[1].trim());
+
+  // Required fields present?
+  var required = REQUIRED_FIELDS_BY_TIER[tier] || REQUIRED_FIELDS_BY_TIER.standard;
+  var foundNorm = foundLabels.map(_norm);
+  for (var i = 0; i < required.length; i++) {
+    if (foundNorm.indexOf(_norm(required[i])) === -1) {
+      reasons.push('missing required **' + required[i] + ':** field');
+    }
+  }
+
+  // Rogue field labels — model invented something not in our schema.
+  for (var j = 0; j < foundLabels.length; j++) {
+    if (!ALLOWED_LABELS.has(foundLabels[j])) {
+      reasons.push('unexpected field "**' + foundLabels[j] + ':**" (not in template)');
+      break;
+    }
+  }
+
+  // Unfilled template brackets: model echoed the instruction placeholders.
+  if (/\*\*\w[^*\n]{0,30}:\*\*\s*\[[A-Z][^\]]{4,}\]/.test(text)) {
+    reasons.push("a field still contains the template placeholder (e.g. [One precise sentence...])");
+  }
+
+  // Echoed prompt content — the model included our instructions in its reply.
+  if (/STRICT RULES|Reply ONLY|preamble[\s.]/i.test(text)) {
+    reasons.push("output echoed prompt instructions");
+  }
+
+  // Role must have actual content. "none" is acceptable for Exports/etc. but
+  // never for Role — every file has a role.
+  var roleM = text.match(/^\*\*Role:\*\*[ \t]*(.*)$/m);
+  if (roleM) {
+    var roleVal = roleM[1].trim();
+    var roleLower = roleVal.toLowerCase().replace(/[.\s]+$/, "");
+    if (roleVal.length < 10 || roleLower === "none" || roleLower === "n/a") {
+      reasons.push("Role field has no real content");
+    }
+  }
+
+  return { ok: reasons.length === 0, reasons: reasons };
+}
+
 // ─── LIST CAP ─────────────────────────────────────────────
 function capListSection(text, maxItems) {
   if (!text || maxItems <= 0) return text;
@@ -307,17 +433,57 @@ function capListSection(text, maxItems) {
   var body = match[2];
   var suffix = match[3];
 
-  var itemLines = body.split("\n").filter(function (l) {
-    return /^\s*[-*`\d]/.test(l) && l.trim().length > 0;
-  });
+  // Walk lines once, tracking fence state. Bullets only count as items when
+  // they're OUTSIDE a fenced code block — otherwise a stray ``` inside an
+  // item's code sample gets counted as a separate "item" and the kept slice
+  // can leave a fence dangling, which then leaks into Non-obvious deps /
+  // Watch out and renders them as code.
+  var rawLines = body.split("\n");
+  var inFence = false;
+  var fenceCh = "";
+  var fenceLen = 0;
+  var itemStartLines = [];
+  for (var i = 0; i < rawLines.length; i++) {
+    var fm = rawLines[i].match(/^( {0,3})(`{3,}|~{3,})/);
+    if (fm) {
+      var fc = fm[2][0], fl = fm[2].length;
+      if (!inFence) { inFence = true; fenceCh = fc; fenceLen = fl; }
+      else if (fc === fenceCh && fl >= fenceLen) { inFence = false; }
+      continue;
+    }
+    if (inFence) continue;
+    if (/^\s*[-*\d]/.test(rawLines[i]) && rawLines[i].trim().length > 0) {
+      itemStartLines.push(i);
+    }
+  }
 
-  if (itemLines.length <= maxItems) return text;
+  if (itemStartLines.length <= maxItems) return text;
 
-  var kept = itemLines.slice(0, maxItems);
-  var overflow = itemLines.length - maxItems;
+  // Keep everything up to (but not including) the line where item #(maxItems+1)
+  // starts. That preserves the bullets' descriptions and any code blocks that
+  // belong to kept items, instead of filtering to just bullet lines.
+  var cutAt = itemStartLines[maxItems];
+  var kept = rawLines.slice(0, cutAt).join("\n").replace(/\s+$/, "");
+
+  // If the kept slice ends with a fence still open, close it before the
+  // truncation marker so the fence can't bleed into the next field.
+  var keptOpen = "";
+  var keptOpenLen = 0;
+  var keptLines = kept.split("\n");
+  for (var k = 0; k < keptLines.length; k++) {
+    var km = keptLines[k].match(/^( {0,3})(`{3,}|~{3,})/);
+    if (!km) continue;
+    var kc = km[2][0], kl = km[2].length;
+    if (!keptOpen) { keptOpen = kc; keptOpenLen = kl; }
+    else if (kc === keptOpen && kl >= keptOpenLen) { keptOpen = ""; keptOpenLen = 0; }
+  }
+  var fenceCloser = keptOpen ? "\n" + (keptOpen === "~" ? "~~~" : "```") : "";
+
+  var overflow = itemStartLines.length - maxItems;
   var newBody =
     "\n" +
-    kept.join("\n") +
+    kept +
+    fenceCloser +
     "\n*...and " + overflow + " more (file too large to list all)*";
   return text.replace(sectionRe, prefix + newBody + suffix);
 }
@@ -397,119 +563,176 @@ export async function analyzeFileWithOllama(
     // own --- separator between entries, so a trailing one creates a double ---
     raw = raw.replace(/(\n\s*---+\s*)+$/, "").trimEnd();
     raw = raw.replace(/^###[ \t]+[^\n]*\n?/, "").trimStart();
+    raw = sanitizeStructure(raw);
     raw = "### `" + rel + "`\n" + raw;
     return raw;
   }
 
-  // ─── ATTEMPT 1: Native Ollama API ───────────────────────
-  try {
-    var t1 = Date.now();
-    var res = await fetch(config.ollamaHost + "/api/chat", {
-      method: "POST",
-      signal: signal,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: config.model,
-        messages: messages,
-        stream: false,
-        options: {
-          num_predict: mode.maxTokens,
-          temperature: mode.temp,
-          repeat_penalty: 1.35,
-          repeat_last_n: 128,
-        },
-      }),
-    });
-
-    if (!res.ok) {
-      var errText = await res.text().catch(function () { return ""; });
-      console.log(
-        "[ollama] Native API HTTP " + res.status + ": " + errText.slice(0, 200),
-      );
-    } else {
-      var data = await res.json();
-      var text =
-        data.message && data.message.content ? data.message.content.trim() : "";
-      text = postProcess(text);
-      var tokensPerSecond = null;
-      if (data.eval_count > 0 && data.eval_duration > 0) {
-        // Prefer Ollama's internal nanosecond timer — excludes all overhead
-        tokensPerSecond = Math.round(data.eval_count / (data.eval_duration / 1e9));
-      } else if (data.eval_count > 0) {
-        // Cloud models: Ollama omits eval_duration, fall back to wall-clock
-        var wallSec1 = (Date.now() - t1) / 1000;
-        if (wallSec1 > 0) tokensPerSecond = Math.round(data.eval_count / wallSec1);
+  // One round-trip to the model: tries the native Ollama endpoint first,
+  // falls back to the OpenAI-compatible endpoint if native fails or is
+  // empty. Returns the raw (un-postprocessed) text plus tok/s if available,
+  // or an `error` string if both endpoints failed hard.
+  async function callOnce(msgs, temp, maxTokens) {
+    // Native
+    try {
+      var t1 = Date.now();
+      var res = await fetch(config.ollamaHost + "/api/chat", {
+        method: "POST",
+        signal: signal,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: config.model,
+          messages: msgs,
+          stream: false,
+          options: {
+            num_predict: maxTokens,
+            temperature: temp,
+            repeat_penalty: 1.35,
+            repeat_last_n: 128,
+          },
+        }),
+      });
+      if (res.ok) {
+        var data = await res.json();
+        var raw =
+          data.message && data.message.content ? data.message.content.trim() : "";
+        var tps = null;
+        if (data.eval_count > 0 && data.eval_duration > 0) {
+          tps = Math.round(data.eval_count / (data.eval_duration / 1e9));
+        } else if (data.eval_count > 0) {
+          var w1 = (Date.now() - t1) / 1000;
+          if (w1 > 0) tps = Math.round(data.eval_count / w1);
+        }
+        if (raw) return { raw: raw, tokensPerSecond: tps, error: null };
+        console.log("[ollama] Native API returned empty, trying OpenAI endpoint…");
+      } else {
+        var errText = await res.text().catch(function () { return ""; });
+        console.log(
+          "[ollama] Native API HTTP " + res.status + ": " + errText.slice(0, 200),
+        );
       }
-      if (text) return { content: text, error: null, tokensPerSecond };
-      console.log("[ollama] Native API returned empty, trying OpenAI endpoint…");
+    } catch (e) {
+      if (e.name === "AbortError") throw e;
+      console.log(
+        "[ollama] Native API error: " + e.message + ", trying OpenAI endpoint…",
+      );
     }
-  } catch (e) {
-    if (e.name === "AbortError") throw e;
-    console.log(
-      "[ollama] Native API error: " + e.message + ", trying OpenAI endpoint…",
-    );
+    // OpenAI fallback
+    try {
+      var t2 = Date.now();
+      var res2 = await fetch(config.ollamaHost + "/v1/chat/completions", {
+        method: "POST",
+        signal: signal,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: config.model,
+          messages: msgs,
+          temperature: temp,
+          max_tokens: maxTokens,
+          frequency_penalty: 0.3,
+          stream: false,
+        }),
+      });
+      if (!res2.ok) {
+        var errText2 = await res2.text().catch(function () { return ""; });
+        return {
+          raw: null,
+          tokensPerSecond: null,
+          error:
+            "Both Ollama APIs failed. HTTP " +
+            res2.status +
+            ": " +
+            errText2.slice(0, 300),
+        };
+      }
+      var data2 = await res2.json();
+      var raw2 =
+        data2.choices &&
+        data2.choices[0] &&
+        data2.choices[0].message &&
+        data2.choices[0].message.content
+          ? data2.choices[0].message.content.trim()
+          : "";
+      var tps2 = null;
+      if (data2.usage) {
+        var totalToks =
+          (data2.usage.completion_tokens || 0) + (data2.usage.prompt_tokens || 0);
+        var w2 = (Date.now() - t2) / 1000;
+        if (totalToks > 0 && w2 > 0) tps2 = Math.round(totalToks / w2);
+      }
+      return { raw: raw2, tokensPerSecond: tps2, error: null };
+    } catch (e) {
+      if (e.name === "AbortError") throw e;
+      return { raw: null, tokensPerSecond: null, error: "Ollama request failed: " + e.message };
+    }
   }
 
-  // ─── ATTEMPT 2: OpenAI-compatible endpoint ───────────────
-  try {
-    var t2 = Date.now();
-    var res2 = await fetch(config.ollamaHost + "/v1/chat/completions", {
-      method: "POST",
-      signal: signal,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: config.model,
-        messages: messages,
-        temperature: mode.temp,
-        max_tokens: mode.maxTokens,
-        frequency_penalty: 0.3,
-        stream: false,
-      }),
-    });
+  // Retry loop: if the validator finds structural problems, ask the model to
+  // try again with a corrective preface. Cap at one retry so a stubborn model
+  // can't blow up latency or token cost.
+  var maxAttempts = 2;
+  var attemptMessages = messages;
+  var attemptTemp = mode.temp;
+  var lastContent = null;
+  var lastTokens = null;
+  var lastReasons = null;
 
-    if (!res2.ok) {
-      var errText2 = await res2.text().catch(function () { return ""; });
-      return {
-        content: null,
-        error:
-          "Both Ollama APIs failed. HTTP " +
-          res2.status +
-          ": " +
-          errText2.slice(0, 300),
-      };
+  for (var attempt = 0; attempt < maxAttempts; attempt++) {
+    var r = await callOnce(attemptMessages, attemptTemp, mode.maxTokens);
+    if (r.error && !r.raw) {
+      // Hard transport failure — bail with the error string.
+      if (attempt === 0) return { content: null, error: r.error };
+      // If first attempt produced content, prefer that over the retry's failure.
+      return { content: lastContent, error: null, tokensPerSecond: lastTokens };
+    }
+    if (!r.raw) {
+      if (attempt === 0) {
+        return {
+          content: null,
+          error:
+            'Model "' + config.model + '" returned empty. Try a different model.',
+        };
+      }
+      return { content: lastContent, error: null, tokensPerSecond: lastTokens };
     }
 
-    var data2 = await res2.json();
-    var text2 =
-      data2.choices &&
-      data2.choices[0] &&
-      data2.choices[0].message &&
-      data2.choices[0].message.content
-        ? data2.choices[0].message.content.trim()
-        : "";
+    var processed = postProcess(r.raw);
+    var v = validateModelOutput(processed, tier);
 
-    text2 = postProcess(text2);
-    if (!text2) {
-      return {
-        content: null,
-        error:
-          'Model "' +
-          config.model +
-          '" returned empty after both attempts. Try a different model.',
-      };
+    if (v.ok) {
+      return { content: processed, error: null, tokensPerSecond: r.tokensPerSecond };
     }
 
-    // Estimate tok/s from usage tokens + wall-clock (OpenAI endpoint has no timing fields)
-    var tokensPerSecond2 = null;
-    if (data2.usage) {
-      var totalToks = (data2.usage.completion_tokens || 0) + (data2.usage.prompt_tokens || 0);
-      var wallSec2 = (Date.now() - t2) / 1000;
-      if (totalToks > 0 && wallSec2 > 0) tokensPerSecond2 = Math.round(totalToks / wallSec2);
-    }
+    // Validation failed. Remember this attempt in case we exhaust retries.
+    lastContent = processed;
+    lastTokens = r.tokensPerSecond;
+    lastReasons = v.reasons;
 
-    return { content: text2, error: null, tokensPerSecond: tokensPerSecond2 };
-  } catch (e) {
-    if (e.name === "AbortError") throw e;
-    return { content: null, error: "Ollama request failed: " + e.message };
+    if (attempt + 1 < maxAttempts) {
+      console.log(
+        "[ollama] " + rel + " — validation failed: " + v.reasons.join("; ") +
+          " — retrying with corrective preface"
+      );
+      // Build a tighter retry: prepend a one-shot correction, lower temp.
+      var correction =
+        "RETRY: Your previous reply violated the required template. Fix these issues:\n" +
+        v.reasons.map(function (x) { return "  - " + x; }).join("\n") + "\n" +
+        "Output ONLY the markdown block. Every required **Field:** must be present, " +
+        "at column 0, on its own line. No extra fields. No echoed instructions.\n\n";
+      attemptMessages = [
+        { role: "user", content: correction + messages[0].content },
+      ];
+      attemptTemp = Math.max(0.05, mode.temp * 0.4);
+    }
   }
+
+  // Retries exhausted — accept the last output. postProcess + sanitizeStructure
+  // already guarantee the file's section won't structurally break the assembled
+  // CLAUDE.md, so this is preferable to marking the file as failed.
+  return {
+    content: lastContent,
+    error: null,
+    tokensPerSecond: lastTokens,
+    validation: { ok: false, reasons: lastReasons },
+  };
 }
