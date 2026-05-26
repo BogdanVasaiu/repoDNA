@@ -329,7 +329,7 @@ export async function analyzeFileWithOllama(
   config,
   signal,
 ) {
-  var rel = relative(projectRoot, filePath);
+  var rel = relative(projectRoot, filePath).replace(/\\/g, "/");
   var ext = extname(filePath).replace(".", "") || "txt";
 
   var content;
