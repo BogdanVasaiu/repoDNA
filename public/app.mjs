@@ -1224,6 +1224,7 @@ window._retryFile = async function (fid, precision) {
   // dedupes, but this avoids the optimistic UI flicker.
   if ((S.fileStatuses[fid] || {}).status === "running") return;
   if (S.retryingFiles.has(fid)) return;
+  _ranThisSession = true;
   var _card = document.querySelector('.result-card[data-file="' + CSS.escape(fid) + '"]');
   if (_card && _card.dataset.editing === 'true') {
     showSnack("Finish or cancel editing this file before retrying.", "warn", 4000);
@@ -3224,6 +3225,12 @@ function renderAdvSettings() {
       document.removeEventListener("click", _closeAdv);
     }
   });
+
+  window.addEventListener("scroll", function _closeAdvScroll() {
+    if (csel.classList.contains("open")) {
+      csel.classList.remove("open");
+    }
+  }, true);
 
   renderAdvContent();
 }
@@ -5337,8 +5344,14 @@ var _fcFindMode = "card"; // "card" or "context"
 window._fcRefresh = null;  // set by an open dialog; invoked by SSE handlers
 
 window._openFindCard = function () {
-  // Pull every file the run will produce — not just ones with results yet.
-  if (!S.fileList || !S.fileList.length) return;
+  // Source the list from results (files shown in tabs) plus any pending files
+  // from the current run. Smart Update keeps cached results out of fileList, so
+  // relying on fileList alone would hide every previously-analysed file.
+  var _hasAnyResult = false;
+  for (var _c in S.results) {
+    if ((S.results[_c] || []).length) { _hasAnyResult = true; break; }
+  }
+  if (!_hasAnyResult && (!S.fileList || !S.fileList.length)) return;
 
   var overlay = document.createElement("div");
   overlay.className = "find-card-overlay";
@@ -5537,14 +5550,23 @@ window._openFindCard = function () {
         catByFid[items[i].file] = cat;
       }
     }
-    // Source the list from the full run roster, not just produced results.
+    // Union: every file shown in the tabs (has a result) PLUS any pending
+    // files from the current run roster that haven't produced one yet.
+    // Pending files render but stay disabled until their result arrives.
+    var seen = {};
     var currentFiles = [];
+    for (var fid in catByFid) {
+      var stR = (S.fileStatuses[fid] || {}).status;
+      if (stR === "deleted") continue;
+      seen[fid] = true;
+      currentFiles.push({ file: fid, cat: catByFid[fid] });
+    }
     for (var k = 0; k < S.fileList.length; k++) {
-      var fid = S.fileList[k];
-      // Hide files that were deleted from the project for this run.
-      var st = (S.fileStatuses[fid] || {}).status;
-      if (st === "deleted") continue;
-      currentFiles.push({ file: fid, cat: catByFid[fid] || "" });
+      var fidR = S.fileList[k];
+      if (seen[fidR]) continue;
+      var stP = (S.fileStatuses[fidR] || {}).status;
+      if (stP === "deleted") continue;
+      currentFiles.push({ file: fidR, cat: "" });
     }
     currentFiles.sort(function (a, b) { return a.file.localeCompare(b.file); });
 
