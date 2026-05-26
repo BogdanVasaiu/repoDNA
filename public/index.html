@@ -502,6 +502,13 @@
             </div>
             <div class="toggle" id="toggle-filetree" style="margin-left: 10px" onclick="window._toggleFileTree()"></div>
           </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Include dependency graph</div>
+              <div class="toggle-desc">Adds a static import-analysis section that lists, for each source file, which other files in the project it imports — plus a "Most imported modules" hub list. Supports JS/TS, Vue/Svelte, Python, Go, Rust, Ruby, PHP, C/C++, Dart, GDScript, Java, Kotlin, Scala, C#, and Elixir.</div>
+            </div>
+            <div class="toggle on" id="toggle-depgraph" style="margin-left: 10px" onclick="window._toggleDepGraph()"></div>
+          </div>
         </div>
         <div class="wizard-nav">
           <button class="btn btn-ghost" onclick="window._goToPage(2)">← Back</button>

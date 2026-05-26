@@ -38,6 +38,7 @@ var S = {
   treeSearchQuery: "",
   selectedCategories: new Set(),
   fileTreeMode: "none",   // "none" | "included" | "all"
+  includeDepGraph: true,  // toggle for the static dependency graph section
   customRules: {
     excludedFolders: [],
     excludedExtensions: [],
@@ -404,6 +405,11 @@ function applyProjectSettings(proj) {
   var ftInput = document.getElementById("ft-" + S.fileTreeMode);
   if (ftInput) ftInput.checked = true;
 
+  // includeDepGraph defaults to ON (current behavior) — falsy explicit false turns it off
+  S.includeDepGraph = p.includeDepGraph !== false;
+  var dgToggle = document.getElementById("toggle-depgraph");
+  if (dgToggle) dgToggle.classList.toggle("on", S.includeDepGraph);
+
   // Ollama host
   S.ollamaHost = p.ollamaHost || "http://localhost:11434";
   document.getElementById("ollama-host").value = S.ollamaHost;
@@ -439,6 +445,7 @@ function _buildProjectPayload() {
     customRules: S.customRules,
     agentTarget: S.agentTarget,
     fileTreeMode: S.fileTreeMode,
+    includeDepGraph: S.includeDepGraph,
     userOverrides: Array.from(S.userOverrides.entries()),
   };
 }
@@ -3771,6 +3778,12 @@ window._setTreeMode = function (mode) {
   saveCurrentProjectSettings();
 };
 
+window._toggleDepGraph = function () {
+  S.includeDepGraph = !S.includeDepGraph;
+  document.getElementById("toggle-depgraph").classList.toggle("on", S.includeDepGraph);
+  saveCurrentProjectSettings();
+};
+
 function _updateTreeModeHint() {
   var hints = {
     included: "Shows only analyzed files — compact and focused.",
@@ -3804,6 +3817,8 @@ function buildReview() {
     ["⚡", "Precision", S.precision],
     ["📄", "Files", String(inc)],
     ["🔁", "Changes", S.changesOnly ? "On" : "Off"],
+    ["🌲", "File tree", S.fileTreeMode === "none" ? "Off" : (S.fileTreeMode === "all" ? "Full project" : "Included only")],
+    ["🔗", "Dep graph", S.includeDepGraph ? "On" : "Off"],
     ["🛠️", "Agent", _agent.name],
     ["💾", "Output", _agent.file],
   ]
@@ -4520,6 +4535,7 @@ window._startRun = async function () {
     customRules: S.customRules,
     agentTarget: S.agentTarget,
     fileTreeMode: S.fileTreeMode,
+    includeDepGraph: S.includeDepGraph,
   };
   try {
     await fetch("/api/save-config", {
