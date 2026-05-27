@@ -1,5 +1,6 @@
-import { readFileSync } from "fs";
+import { readFileSync, appendFileSync } from "fs";
 import { extname, relative } from "path";
+import { isDebugEnabled, LOG_FILE } from "./debug.mjs";
 
 // ─── PRECISION MODES ─────────────────────────────────────
 // maxTokens : ceiling for model output (keep low — context files need precision, not verbosity)
@@ -709,10 +710,9 @@ export async function analyzeFileWithOllama(
     lastReasons = v.reasons;
 
     if (attempt + 1 < maxAttempts) {
-      console.log(
-        "[ollama] " + rel + " — validation failed: " + v.reasons.join("; ") +
-          " — retrying with corrective preface"
-      );
+      if (isDebugEnabled()) {
+        appendFileSync(LOG_FILE, "[ollama] " + rel + " — validation failed: " + v.reasons.join("; ") + " — retrying with corrective preface\n");
+      }
       // Build a tighter retry: prepend a one-shot correction, lower temp.
       var correction =
         "RETRY: Your previous reply violated the required template. Fix these issues:\n" +
