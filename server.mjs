@@ -179,6 +179,14 @@ function catMapsToResults(maps) {
   return out;
 }
 
+function getResultFileIds(maps) {
+  var ids = new Set();
+  for (var cat in maps) {
+    maps[cat].forEach(function (_, fileId) { ids.add(fileId); });
+  }
+  return Array.from(ids);
+}
+
 function upsertResult(cat, fileId, content) {
   if (!catResultMaps[cat]) catResultMaps[cat] = new Map();
   catResultMaps[cat].set(fileId, content);
@@ -499,7 +507,7 @@ async function runAnalysis(config) {
   // cached results (smart update). On first run this gives the tree; on
   // subsequent smart-update runs it gives all previously-analyzed files.
   if (processableFiles.length > 0) {
-    var _earlyMd = buildClaudeMd(appState.results, config, [], "", treeFiles);
+    var _earlyMd = buildClaudeMd(appState.results, config, getResultFileIds(catResultMaps), config.projectPath, treeFiles);
     appState.previewContent = _earlyMd;
     push("preview", { content: _earlyMd, final: false });
   }
@@ -520,13 +528,10 @@ async function runAnalysis(config) {
         ? deletedCount + " file" + (deletedCount > 1 ? "s" : "") + " deleted"
         : "No changed files";
       log("info", _rebuildReason + " — rebuilding " + outputRelFile + " from cached results.");
-      var _allIds = filesToProcess.map(function (f) {
-        return f.id;
-      });
       var _finalMd = buildClaudeMd(
         appState.results,
         config,
-        _allIds,
+        getResultFileIds(catResultMaps),
         config.projectPath,
         treeFiles
       );
@@ -705,7 +710,7 @@ async function runAnalysis(config) {
       total: appState.total,
     });
 
-    var currentMd = buildClaudeMd(appState.results, config, [], "", treeFiles);
+    var currentMd = buildClaudeMd(appState.results, config, getResultFileIds(catResultMaps), config.projectPath, treeFiles);
     appState.previewContent = currentMd;
     appState.previewFinal = false;
     push("preview", { content: currentMd });
@@ -716,7 +721,7 @@ async function runAnalysis(config) {
   var finalMd = buildClaudeMd(
     appState.results,
     config,
-    allProcessedIds,
+    getResultFileIds(catResultMaps),
     config.projectPath,
     treeFiles
   );
@@ -933,7 +938,7 @@ async function _executeRetry(fileId, precisionOverride) {
           if (!_retryMaps[_rEntry.category]) _retryMaps[_rEntry.category] = new Map();
           _retryMaps[_rEntry.category].set(_rk, _rEntry.content);
         }
-        var _retryMd = buildClaudeMd(catMapsToResults(_retryMaps), config, [], config.projectPath, null);
+        var _retryMd = buildClaudeMd(catMapsToResults(_retryMaps), config, getResultFileIds(_retryMaps), config.projectPath, null);
         if (!existsSync(_retryAbsDir)) mkdirSync(_retryAbsDir, { recursive: true });
         writeFileSync(_retryAbsPath, _retryMd, "utf-8");
         appState.previewContent = _retryMd;
@@ -941,7 +946,7 @@ async function _executeRetry(fileId, precisionOverride) {
         push("preview", { content: _retryMd, final: true });
       } catch (_retryPersistErr) {
         log("warn", "Could not persist retry to cache: " + _retryPersistErr.message);
-        var md = buildClaudeMd(appState.results, config, [], "", null);
+        var md = buildClaudeMd(appState.results, config, getResultFileIds(catResultMaps), config.projectPath, null);
         appState.previewContent = md;
         push("preview", { content: md });
       }
@@ -1722,7 +1727,7 @@ export function startServer() {
           var urAbsPath = join(urCfg.projectPath, urRelFile);
           var urAbsDir = dirname(urAbsPath);
           try {
-            var urMd = buildClaudeMd(urResultsForBuild, urCfg, [], urCfg.projectPath, null);
+            var urMd = buildClaudeMd(urResultsForBuild, urCfg, getResultFileIds(urRebuiltMaps), urCfg.projectPath, null);
             if (!existsSync(urAbsDir)) mkdirSync(urAbsDir, { recursive: true });
             writeFileSync(urAbsPath, urMd, "utf-8");
             urWroteFile = true;
