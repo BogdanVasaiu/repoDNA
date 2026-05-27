@@ -751,22 +751,33 @@ transform-origin: 25% 50%;
   padding: 8px 0 0;
   mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
   -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  display: flex;
+  justify-content: center;
 }
 
 .agents-track {
   display: flex;
   flex-wrap: nowrap;
-  gap: 12px;
+  gap: 0;
   width: max-content;
-  padding: 12px 6px 20px;
+  padding: 12px 0 20px;
   animation: agents-scroll 38s linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 .agents-track:hover { animation-play-state: paused; }
 
+.agents-set {
+  display: flex;
+  flex-shrink: 0;
+  gap: 12px;
+  padding-right: 12px; /* keeps spacing between sets equal to spacing between pills */
+}
+
 @keyframes agents-scroll {
   from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+  to   { transform: translateX(-25%); }
 }
 
 .agent-pill {

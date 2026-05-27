@@ -536,129 +536,258 @@
   <div class="agents-carousel-wrap">
     <div class="agents-track">
 
-      <!-- ── first copy ── -->
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Claude-icon.svg" alt="Claude" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Claude Code</div>
-        <div class="agent-pill-file">CLAUDE.md</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Cursor-icon.svg" alt="Cursor" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Cursor</div>
-        <div class="agent-pill-file">.cursorrules</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Copilot-icon.svg" alt="Copilot" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Copilot</div>
-        <div class="agent-pill-file">copilot-instructions.md</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Gemini-icon.svg" alt="Gemini" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Gemini CLI</div>
-        <div class="agent-pill-file">GEMINI.md</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Windsurf-icon.svg" alt="Windsurf" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Windsurf</div>
-        <div class="agent-pill-file">.windsurfrules</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Codex-icon.svg" alt="Codex" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Codex CLI</div>
-        <div class="agent-pill-file">AGENTS.md</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Cline-icon.svg" alt="Cline" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Cline</div>
-        <div class="agent-pill-file">.clinerules/</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/RooCode-icon.svg" alt="Roo Code" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Roo Code</div>
-        <div class="agent-pill-file">AGENTS.md</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Amp-icon.svg" alt="Amp" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Amp</div>
-        <div class="agent-pill-file">AGENT.md</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Opencode-icon.svg" alt="OpenCode" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">OpenCode</div>
-        <div class="agent-pill-file">AGENTS.md</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Openclaw-icon.svg" alt="OpenClaw" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">OpenClaw</div>
-        <div class="agent-pill-file">AGENTS.md</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Generic-icon.svg" alt="Generic" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Generic</div>
-        <div class="agent-pill-file">AGENTS.md</div>
-      </div>
+      <!-- ── one set of pills (repeated 4× for seamless looping at any viewport width) ── -->
+      <div class="agents-set">
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Claude-icon.svg" alt="Claude" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Claude Code</div>
+          <div class="agent-pill-file">CLAUDE.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Cursor-icon.svg" alt="Cursor" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Cursor</div>
+          <div class="agent-pill-file">.cursorrules</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Copilot-icon.svg" alt="Copilot" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Copilot</div>
+          <div class="agent-pill-file">copilot-instructions.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Gemini-icon.svg" alt="Gemini" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Gemini CLI</div>
+          <div class="agent-pill-file">GEMINI.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Windsurf-icon.svg" alt="Windsurf" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Windsurf</div>
+          <div class="agent-pill-file">.windsurfrules</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Codex-icon.svg" alt="Codex" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Codex CLI</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Cline-icon.svg" alt="Cline" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Cline</div>
+          <div class="agent-pill-file">.clinerules/</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/RooCode-icon.svg" alt="Roo Code" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Roo Code</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Amp-icon.svg" alt="Amp" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Amp</div>
+          <div class="agent-pill-file">AGENT.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Opencode-icon.svg" alt="OpenCode" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">OpenCode</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Openclaw-icon.svg" alt="OpenClaw" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">OpenClaw</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Generic-icon.svg" alt="Generic" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Generic</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+      </div><!-- /.agents-set -->
 
-      <!-- ── second copy (seamless loop) ── -->
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Claude-icon.svg" alt="Claude" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Claude Code</div>
-        <div class="agent-pill-file">CLAUDE.md</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Cursor-icon.svg" alt="Cursor" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Cursor</div>
-        <div class="agent-pill-file">.cursorrules</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Copilot-icon.svg" alt="Copilot" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Copilot</div>
-        <div class="agent-pill-file">copilot-instructions.md</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Gemini-icon.svg" alt="Gemini" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Gemini CLI</div>
-        <div class="agent-pill-file">GEMINI.md</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Windsurf-icon.svg" alt="Windsurf" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Windsurf</div>
-        <div class="agent-pill-file">.windsurfrules</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Codex-icon.svg" alt="Codex" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Codex CLI</div>
-        <div class="agent-pill-file">AGENTS.md</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Cline-icon.svg" alt="Cline" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Cline</div>
-        <div class="agent-pill-file">.clinerules/</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/RooCode-icon.svg" alt="Roo Code" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Roo Code</div>
-        <div class="agent-pill-file">AGENTS.md</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Amp-icon.svg" alt="Amp" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Amp</div>
-        <div class="agent-pill-file">AGENT.md</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/OpenCode-icon.svg" alt="OpenCode" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">OpenCode</div>
-        <div class="agent-pill-file">AGENTS.md</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/OpenClaw-icon.svg" alt="OpenClaw" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">OpenClaw</div>
-        <div class="agent-pill-file">AGENTS.md</div>
-      </div>
-      <div class="agent-pill">
-        <div class="agent-pill-icon"><img src="shared/assets/agents/Generic-icon.svg" alt="Generic" onerror="this.style.display='none'"></div>
-        <div class="agent-pill-name">Generic</div>
-        <div class="agent-pill-file">AGENTS.md</div>
-      </div>
+      <div class="agents-set" aria-hidden="true">
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Claude-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Claude Code</div>
+          <div class="agent-pill-file">CLAUDE.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Cursor-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Cursor</div>
+          <div class="agent-pill-file">.cursorrules</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Copilot-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Copilot</div>
+          <div class="agent-pill-file">copilot-instructions.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Gemini-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Gemini CLI</div>
+          <div class="agent-pill-file">GEMINI.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Windsurf-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Windsurf</div>
+          <div class="agent-pill-file">.windsurfrules</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Codex-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Codex CLI</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Cline-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Cline</div>
+          <div class="agent-pill-file">.clinerules/</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/RooCode-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Roo Code</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Amp-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Amp</div>
+          <div class="agent-pill-file">AGENT.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Opencode-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">OpenCode</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Openclaw-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">OpenClaw</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Generic-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Generic</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+      </div><!-- /.agents-set -->
+
+      <div class="agents-set" aria-hidden="true">
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Claude-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Claude Code</div>
+          <div class="agent-pill-file">CLAUDE.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Cursor-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Cursor</div>
+          <div class="agent-pill-file">.cursorrules</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Copilot-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Copilot</div>
+          <div class="agent-pill-file">copilot-instructions.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Gemini-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Gemini CLI</div>
+          <div class="agent-pill-file">GEMINI.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Windsurf-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Windsurf</div>
+          <div class="agent-pill-file">.windsurfrules</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Codex-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Codex CLI</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Cline-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Cline</div>
+          <div class="agent-pill-file">.clinerules/</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/RooCode-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Roo Code</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Amp-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Amp</div>
+          <div class="agent-pill-file">AGENT.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Opencode-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">OpenCode</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Openclaw-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">OpenClaw</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Generic-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Generic</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+      </div><!-- /.agents-set -->
+
+      <div class="agents-set" aria-hidden="true">
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Claude-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Claude Code</div>
+          <div class="agent-pill-file">CLAUDE.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Cursor-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Cursor</div>
+          <div class="agent-pill-file">.cursorrules</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Copilot-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Copilot</div>
+          <div class="agent-pill-file">copilot-instructions.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Gemini-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Gemini CLI</div>
+          <div class="agent-pill-file">GEMINI.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Windsurf-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Windsurf</div>
+          <div class="agent-pill-file">.windsurfrules</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Codex-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Codex CLI</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Cline-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Cline</div>
+          <div class="agent-pill-file">.clinerules/</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/RooCode-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Roo Code</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Amp-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Amp</div>
+          <div class="agent-pill-file">AGENT.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Opencode-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">OpenCode</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Openclaw-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">OpenClaw</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+        <div class="agent-pill">
+          <div class="agent-pill-icon"><img src="shared/assets/agents/Generic-icon.svg" alt="" onerror="this.style.display='none'"></div>
+          <div class="agent-pill-name">Generic</div>
+          <div class="agent-pill-file">AGENTS.md</div>
+        </div>
+      </div><!-- /.agents-set -->
 
     </div>
   </div>
