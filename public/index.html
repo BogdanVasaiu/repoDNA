@@ -224,6 +224,17 @@
           <div class="bb-add-row">
             <div class="bb-input-group">
               <input class="input" id="project-path" placeholder="Paste or browse to your project folder" spellcheck="false">
+              <span class="mcat-info-wrap bb-field-info">
+                <button class="mcat-info-btn" tabindex="-1">i</button>
+                <span class="mcat-tooltip" style="width:300px">
+                  <strong style="color:var(--t1);display:block;margin-bottom:6px">Project type detection</strong>
+                  repoDNA detects your project type from root files and applies <strong style="color:var(--t1)">only the rules relevant to that ecosystem</strong> — a Python project won't carry Node.js exclusions, and vice versa. Unrecognised projects fall back to all rules as a safe catch-all.
+                  <span style="display:block;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);border-radius:6px;padding:7px 9px;margin-top:9px;color:var(--t2);font-size:11px;line-height:1.5">
+                    <strong style="color:var(--amb);display:block;margin-bottom:3px">⚠ One project per folder</strong>
+                    Pointing to a folder that contains <strong style="color:var(--t1)">multiple unrelated projects</strong> will confuse the classifier. Add each sub-project as a separate entry instead.
+                  </span>
+                </span>
+              </span>
               <button class="bb-input-add" id="btn-add-project" onclick="window._addProject()">+ Add</button>
             </div>
             <button class="btn-inline" id="btn-browse-folder" onclick="window._browsePath()" title="Open folder picker">Browse…</button>
@@ -478,8 +489,20 @@
           <div class="card-title">Advanced Options</div>
           <div class="toggle-row">
             <div>
-              <div class="toggle-label">Smart Update</div>
-              <div class="toggle-desc"><strong>ON</strong> — Only re-analyzes files changed since the last run; unchanged files reuse their cached result (manual edits and retries included). <strong>OFF</strong> — Clears all cache and re-analyzes everything from scratch.</div>            </div>
+              <div class="toggle-label">Smart Update
+                <span class="mcat-info-wrap">
+                  <button class="mcat-info-btn" tabindex="-1">i</button>
+                  <span class="mcat-tooltip" style="width:270px">
+                    <strong style="color:var(--t1);display:block;margin-bottom:8px">Smart Update</strong>
+                    <span style="display:block;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.28);border-radius:6px;padding:7px 9px;color:var(--t2);font-size:11px;line-height:1.5">
+                      <strong style="color:#60a5fa;display:block;margin-bottom:3px">💡 When to turn it off</strong>
+                      Disable Smart Update when switching to a <strong style="color:var(--t1)">different model</strong> — cached results from the old model won't match the new one's output style, and a full re-run ensures consistency.
+                    </span>
+                  </span>
+                </span>
+              </div>
+              <div class="toggle-desc"><strong>ON</strong> — Only re-analyzes files changed since the last run; unchanged files reuse their cached result (manual edits and retries included). <strong>OFF</strong> — Clears all cache and re-analyzes everything from scratch.</div>
+            </div>
             <div class="toggle" id="toggle-changes" style="margin-left: 15px" onclick="window._toggleChange()"></div>
           </div>
           <div class="toggle-row">

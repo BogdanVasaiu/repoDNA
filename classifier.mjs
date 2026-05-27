@@ -1,59 +1,25 @@
 // ─── PRIORITY 1 — Universal Excluded Folders ─────────────
+// Keep this list to items that are genuinely cross-ecosystem.
+// Language-specific folders live in PROJECT_RULES and are merged
+// into the effective rules at scan time based on detected project type.
 export const DEFAULT_EXCLUDED_FOLDERS = [
-  "node_modules",
-  "vendor",
-  ".git",
-  ".svn",
-  ".hg",
-  "dist",
-  "build",
-  "out",
-  "output",
-  "target",
-  "bin",
-  "obj",
-  "release",
-  "debug",
-  ".cache",
-  "cache",
-  "__pycache__",
-  ".pytest_cache",
-  ".mypy_cache",
-  ".ruff_cache",
-  ".venv",
-  "venv",
-  "env",
-  "virtualenv",
-  ".tox",
-  "site-packages",
-  ".gradle",
-  ".mvn",
-  "gradle",
-  "Pods",
-  "DerivedData",
-  ".build",
-  "xcuserdata",
-  ".idea",
-  ".vscode",
-  ".vs",
-  ".eclipse",
-  "nbproject",
-  ".settings",
-  "__MACOSX",
-  ".Spotlight-V100",
-  ".Trashes",
-  "$RECYCLE.BIN",
+  // Version control
+  ".git", ".svn", ".hg",
+  // Universal dependency/vendor directories
+  "node_modules", "vendor",
+  // Generic build & output directories (used across many ecosystems)
+  "dist", "build", "out", "output", "target",
+  // Generic caches
+  ".cache", "cache",
+  // IDE / editor directories
+  ".idea", ".vscode", ".vs", ".eclipse", "nbproject", ".settings",
+  // OS-generated junk
+  "__MACOSX", ".Spotlight-V100", ".Trashes", "$RECYCLE.BIN",
   "System Volume Information",
+  // Generic test-coverage output
   "coverage",
-  ".nyc_output",
-  ".next",
-  ".nuxt",
-  ".svelte-kit",
-  ".turbo",
-  ".parcel-cache",
-  ".webpack",
-  "storybook-static",
-  ".repodna", // repoDNA internal data — always skip
+  // repoDNA internal data — always skip
+  ".repodna",
 ];
 
 // ─── PRIORITY 2 — Universal Excluded Filenames ───────────
@@ -381,14 +347,15 @@ export function detectProjectType(rootFiles) {
 }
 
 // ─── PROJECT-SPECIFIC RULES (PRIORITY 6) ─────────────────
+// excludedFolders here are ecosystem-specific — they are NOT in DEFAULT_EXCLUDED_FOLDERS.
+// computeEffectiveRules merges the detected project type's folders into the rules
+// Set so classifyNode's Priority-1 directory check actually sees them.
+// UNKNOWN projects get a union of every type's folders as a safe catch-all.
 const PROJECT_RULES = {
   NODE_JS: {
     excludedFolders: [
-      ".next",
-      ".nuxt",
-      ".svelte-kit",
-      ".turbo",
-      "storybook-static",
+      ".next", ".nuxt", ".svelte-kit", ".turbo",
+      ".parcel-cache", ".webpack", "storybook-static", ".nyc_output",
     ],
     excludedFilenames: [],
     includedFilenames: [],
@@ -396,14 +363,8 @@ const PROJECT_RULES = {
   },
   PYTHON: {
     excludedFolders: [
-      "__pycache__",
-      ".pytest_cache",
-      ".mypy_cache",
-      ".ruff_cache",
-      ".venv",
-      "venv",
-      "env",
-      "site-packages",
+      "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+      ".venv", "venv", "env", "virtualenv", ".tox", "site-packages",
     ],
     excludedFilenames: [],
     includedFilenames: [
@@ -421,19 +382,19 @@ const PROJECT_RULES = {
     includedExtensions: [],
   },
   RUST: {
-    excludedFolders: ["target"],
+    excludedFolders: [],   // "target" is already in DEFAULT_EXCLUDED_FOLDERS
     excludedFilenames: [],
     includedFilenames: ["Cargo.toml"],
     includedExtensions: [],
   },
   JAVA_MAVEN: {
-    excludedFolders: [".gradle", ".mvn", "target"],
+    excludedFolders: [".gradle", ".mvn", "gradle"],
     excludedFilenames: [],
     includedFilenames: ["pom.xml"],
     includedExtensions: [],
   },
   JAVA_GRADLE: {
-    excludedFolders: [".gradle", "build"],
+    excludedFolders: [".gradle", "gradle"],
     excludedFilenames: [],
     includedFilenames: [
       "build.gradle",
@@ -445,25 +406,25 @@ const PROJECT_RULES = {
     includedExtensions: [],
   },
   GO: {
-    excludedFolders: ["vendor"],
+    excludedFolders: [],   // "vendor" is already in DEFAULT_EXCLUDED_FOLDERS
     excludedFilenames: [],
     includedFilenames: ["go.mod", "go.sum"],
     includedExtensions: [],
   },
   RUBY: {
-    excludedFolders: [".bundle", "vendor"],
+    excludedFolders: [".bundle"],   // "vendor" is already in DEFAULT_EXCLUDED_FOLDERS
     excludedFilenames: [],
     includedFilenames: ["Gemfile", "Gemfile.lock"],
     includedExtensions: [],
   },
   PHP: {
-    excludedFolders: ["vendor"],
+    excludedFolders: [],   // "vendor" is already in DEFAULT_EXCLUDED_FOLDERS
     excludedFilenames: [],
     includedFilenames: ["composer.json", "composer.lock"],
     includedExtensions: [],
   },
   DOTNET: {
-    excludedFolders: ["bin", "obj", ".vs", "packages"],
+    excludedFolders: ["bin", "obj", "packages"],
     excludedFilenames: [],
     includedFilenames: [],
     includedExtensions: [
@@ -476,19 +437,13 @@ const PROJECT_RULES = {
     ],
   },
   UNREAL: {
-    excludedFolders: [
-      "Binaries",
-      "Intermediate",
-      "Saved",
-      "DerivedDataCache",
-      "Build",
-    ],
+    excludedFolders: ["Binaries", "Intermediate", "Saved", "DerivedDataCache"],
     excludedFilenames: [],
     includedFilenames: [],
     includedExtensions: ["cpp", "h", "cs", "uproject", "uplugin", "ini"],
   },
   FLUTTER: {
-    excludedFolders: [".dart_tool", "build", ".pub-cache"],
+    excludedFolders: [".dart_tool", ".pub-cache"],   // "build" is in DEFAULT_EXCLUDED_FOLDERS
     excludedFilenames: [],
     includedFilenames: [
       "pubspec.yaml",
@@ -513,7 +468,7 @@ const PROJECT_RULES = {
     ],
   },
   ANDROID: {
-    excludedFolders: [".gradle", "build", "captures", ".idea", "generated"],
+    excludedFolders: [".gradle", "gradle", "captures", "generated"],
     excludedFilenames: [],
     includedFilenames: ["local.properties", "proguard-rules.pro", "google-services.json"],
     includedExtensions: ["java", "kt", "xml", "gradle", "kts", "pro"],
@@ -525,7 +480,7 @@ const PROJECT_RULES = {
     includedExtensions: [],
   },
   C_CPP: {
-    excludedFolders: ["cmake-build-debug", "cmake-build-release", "CMakeFiles", ".cmake"],
+    excludedFolders: ["cmake-build-debug", "cmake-build-release", "CMakeFiles", ".cmake", "bin", "obj", "release", "debug"],
     excludedFilenames: [],
     includedFilenames: [
       "CMakeLists.txt",
@@ -547,13 +502,13 @@ const PROJECT_RULES = {
     includedExtensions: ["swift"],
   },
   UNITY: {
-    excludedFolders: ["Library", "Temp", "Logs", "UserSettings", "Build", "Builds", "obj"],
+    excludedFolders: ["Library", "Temp", "Logs", "UserSettings", "Builds", "obj"],
     excludedFilenames: [],
     includedFilenames: [],
     includedExtensions: ["cs", "shader", "hlsl", "cginc", "glsl", "compute", "asmdef", "asmref"],
   },
   SCALA: {
-    excludedFolders: ["target", ".bsp", ".metals", ".scala-build"],
+    excludedFolders: [".bsp", ".metals", ".scala-build"],   // "target" is in DEFAULT_EXCLUDED_FOLDERS
     excludedFilenames: [],
     includedFilenames: ["build.sbt", "build.properties", ".scalafmt.conf", ".scalafix.conf"],
     includedExtensions: ["scala", "sbt", "sc"],
@@ -933,10 +888,21 @@ export function assignCategory(extension) {
 }
 
 // ─── COMPUTE EFFECTIVE RULES ─────────────────────────────
+// Pre-compute the union of all project-type folder exclusions so UNKNOWN
+// projects get a comprehensive catch-all without runtime iteration cost.
+const _UNKNOWN_EXTRA_FOLDERS = (function () {
+  const all = new Set();
+  for (const r of Object.values(PROJECT_RULES)) {
+    for (const f of (r.excludedFolders || [])) all.add(f.toLowerCase());
+  }
+  return [...all];
+})();
+
 export function computeEffectiveRules(
   customRules = {},
   globalExclusions = {},
   globalInclusions = {},
+  projectType = "UNKNOWN",
 ) {
   const cr = {
     excludedFolders: [],
@@ -953,11 +919,18 @@ export function computeEffectiveRules(
     removedDefaultIncludedFilenames: [],
     ...customRules,
   };
+  const typeFolders = (
+    projectType === "UNKNOWN"
+      ? _UNKNOWN_EXTRA_FOLDERS
+      : (PROJECT_RULES[projectType]?.excludedFolders || []).map((f) => f.toLowerCase())
+  ).filter((f) => !cr.removedDefaultExcludedFolders.includes(f));
+
   return {
     excludedFolders: new Set([
       ...DEFAULT_EXCLUDED_FOLDERS.filter(
         (f) => !cr.removedDefaultExcludedFolders.includes(f),
       ),
+      ...typeFolders,
       ...cr.excludedFolders,
       ...(globalExclusions.folders || []),
     ]),

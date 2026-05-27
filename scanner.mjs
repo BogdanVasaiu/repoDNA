@@ -35,6 +35,7 @@ export function scanProject(
     customRules,
     globalExclusions,
     globalInclusions,
+    projectType,
   );
   const excludedFolders = rules.excludedFolders;
 

@@ -1585,24 +1585,30 @@ function populateModels() {
 
   var locals = S.ollamaModels.filter(function(m) { return !m.isCloud; }).sort(function(a,b){ return a.name.localeCompare(b.name); });
   var clouds = S.ollamaModels.filter(function(m) { return m.isCloud; }).sort(function(a,b){ return a.name.localeCompare(b.name); });
+  var stats = _getModelStats();
 
   var html = '';
   if (locals.length) {
     html += '<div class="model-dropdown-group-label">Local</div>';
     locals.forEach(function(m) {
+      var stat = stats[m.name];
+      var speed = stat && stat.avg > 0 ? '<span class="model-dropdown-item-speed">~' + Math.round(stat.avg) + ' tok/s</span>' : '';
       html += '<div class="model-dropdown-item" data-value="' + escHtml(m.name) + '" onclick="window._selectModelDropdown(\'' + escHtml(m.name) + '\',false)">' +
         _getModelIcon(false) +
         '<span class="model-dropdown-item-name">' + escHtml(m.name) + '</span>' +
+        speed +
         '</div>';
     });
   }
   if (clouds.length) {
     html += '<div class="model-dropdown-group-label">Cloud</div>';
     clouds.forEach(function(m) {
+      var stat = stats[m.name];
+      var speed = stat && stat.avg > 0 ? '<span class="model-dropdown-item-speed">~' + Math.round(stat.avg) + ' tok/s</span>' : '';
       html += '<div class="model-dropdown-item" data-value="' + escHtml(m.name) + '" onclick="window._selectModelDropdown(\'' + escHtml(m.name) + '\',true)">' +
         _getModelIcon(true) +
         '<span class="model-dropdown-item-name">' + escHtml(m.name) + '</span>' +
-        '<span class="model-dropdown-item-type">cloud</span>' +
+        speed +
         '</div>';
     });
   }
@@ -1655,24 +1661,26 @@ async function loadOllamaModelsCatalog() {
 }
 
 (function() {
-  var _tip = null;
+  var _gt = document.createElement('div');
+  _gt.className = 'mcat-tooltip mcat-global-tip';
+  document.body.appendChild(_gt);
   document.addEventListener('mouseover', function(e) {
     var wrap = e.target.closest('.mcat-info-wrap');
     if (!wrap) return;
-    var tooltip = wrap.querySelector('.mcat-tooltip');
-    if (!tooltip) return;
-    _tip = tooltip;
+    var src = wrap.querySelector('.mcat-tooltip:not(.mcat-global-tip)');
+    if (!src) return;
     var btn = wrap.querySelector('.mcat-info-btn');
     var r = btn.getBoundingClientRect();
-    tooltip.style.left = Math.min(r.left, window.innerWidth - 260) + 'px';
-    tooltip.style.top  = (r.bottom + 8) + 'px';
-    tooltip.classList.add('visible');
+    _gt.innerHTML = src.innerHTML;
+    _gt.style.width = src.style.width || '';
+    _gt.style.left = Math.min(r.left, window.innerWidth - 260) + 'px';
+    _gt.style.top  = (r.bottom + 8) + 'px';
+    _gt.style.display = 'block';
   });
   document.addEventListener('mouseout', function(e) {
     var wrap = e.target.closest('.mcat-info-wrap');
     if (!wrap) return;
-    var tooltip = wrap.querySelector('.mcat-tooltip');
-    if (tooltip) tooltip.classList.remove('visible');
+    _gt.style.display = 'none';
   });
 })();
 
