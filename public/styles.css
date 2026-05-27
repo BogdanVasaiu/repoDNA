@@ -610,7 +610,7 @@ select.input { cursor: pointer; }
 .adv-item { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-family: var(--mono); background: var(--s3); }
 .adv-item.adv-item-added  { border-left: 2px solid rgba(32,227,160,.5); background: rgba(32,227,160,.04); }
 .adv-item.adv-item-removed { border-left: 2px solid rgba(248,113,113,.5); background: rgba(248,113,113,.04); color: var(--t4); }
-.adv-item-name { flex: 1; color: var(--t2); }
+.adv-item-name { flex: 1; color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .adv-item-remove { background: none; border: none; color: var(--t4); cursor: pointer; font-size: 12px; padding: 0 4px; border-radius: 3px; }
 .adv-item-remove:hover { color: var(--err); }
 .adv-add-row { display: flex; gap: 6px; margin-top: 8px; }

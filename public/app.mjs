@@ -2553,7 +2553,7 @@ function createTreeNode(node, depth, isLast, lineage) {
       (isAutoExcluded ? getFolderSvg("#555") : getFolderSvg(folderColor)) +
       '</span><span class="tree-name dir-name ' +
       (finalSt === "excluded" ? "struck" : "") +
-      '">' +
+      '" title="' + escHtml(node.name) + '">' +
       escHtml(node.name) +
       '</span><span class="tree-meta">' +
       emptyHintHTML +
@@ -2711,7 +2711,7 @@ function createTreeNode(node, depth, isLast, lineage) {
       getFileBadge(ext2) +
       '</span><span class="tree-name ' +
       (finalSt2 === "excluded" ? "struck" : "") +
-      '">' +
+      '" title="' + escHtml(node.name) + '">' +
       escHtml(node.name) +
       '</span><span class="tree-meta"><span class="tree-size">' +
       sizeLabel +
@@ -3414,7 +3414,7 @@ function renderAdvContent() {
       rowClass +
       '">' + _icon + '<span class="adv-item-name" style="' +
       nameStyle +
-      '">' +
+      '" title="' + escHtml(it.name) + '">' +
       escHtml(it.name) +
       tag +
       '</span><button class="adv-item-remove" data-ai="' +
