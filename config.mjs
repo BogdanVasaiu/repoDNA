@@ -117,6 +117,8 @@ export function addProject(
     entry.ollamaHost = cfg.projects[idx].ollamaHost || entry.ollamaHost;
     entry.agentTarget = cfg.projects[idx].agentTarget || "claude";
     entry.lastOutputFile = cfg.projects[idx].lastOutputFile || "";
+    entry.userOverrides = cfg.projects[idx].userOverrides || [];
+    entry.includeDepGraph = cfg.projects[idx].includeDepGraph !== undefined ? cfg.projects[idx].includeDepGraph : true;
     cfg.projects[idx] = entry;
   } else {
     cfg.projects.push(entry);
