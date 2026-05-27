@@ -1,6 +1,6 @@
 import { readFileSync, appendFileSync } from "fs";
 import { extname, relative } from "path";
-import { isDebugEnabled, LOG_FILE } from "./debug.mjs";
+import { LOG_FILE } from "./debug.mjs";
 
 // ─── PRECISION MODES ─────────────────────────────────────
 // maxTokens : ceiling for model output (keep low — context files need precision, not verbosity)
@@ -48,6 +48,9 @@ var ADAPTIVE_THRESHOLDS = {
 // Handles the adaptive pseudo-mode transparently so the rest of the code is clean.
 function getEffectiveMode(precision, contentLength) {
   if (precision !== "adaptive") {
+    if (precision !== "fast" && contentLength < 300) {
+      return Object.assign({}, PRECISION_MODES.fast, { _name: "fast" });
+    }
     var base = PRECISION_MODES[precision] || PRECISION_MODES.standard;
     return Object.assign({}, base, { _name: precision });
   }
@@ -361,14 +364,15 @@ var REQUIRED_FIELDS_BY_TIER = {
   deep:     ["Role", "Key exports", "Non-obvious deps", "Side effects", "Architecture", "Watch out"],
 };
 
-// Allowed bold field labels at column 0. Plurals included because models drift.
-var ALLOWED_LABELS = new Set([
+function _norm(label) { return label.replace(/s$/, "").toLowerCase(); }
+
+// Allowed bold field labels at column 0. Stored normalized so the check is
+// case-insensitive ("Watch Out" == "Watch out", "Side Effects" == "Side effects").
+var ALLOWED_LABELS_NORM = new Set([
   "Role", "Exports", "Export", "Key exports", "Key export",
   "Non-obvious deps", "Non-obvious dep",
   "Watch out", "Side effects", "Side effect", "Architecture",
-]);
-
-function _norm(label) { return label.replace(/s$/, "").toLowerCase(); }
+].map(_norm));
 
 function validateModelOutput(text, tier) {
   var reasons = [];
@@ -393,7 +397,7 @@ function validateModelOutput(text, tier) {
 
   // Rogue field labels — model invented something not in our schema.
   for (var j = 0; j < foundLabels.length; j++) {
-    if (!ALLOWED_LABELS.has(foundLabels[j])) {
+    if (!ALLOWED_LABELS_NORM.has(_norm(foundLabels[j]))) {
       reasons.push('unexpected field "**' + foundLabels[j] + ':**" (not in template)');
       break;
     }
@@ -513,6 +517,14 @@ export async function analyzeFileWithOllama(
   // Resolve effective mode — adaptive is transparently mapped to fast/standard/deep
   var mode = getEffectiveMode(config.precision, content.length);
   var tier = mode._name; // always 'fast' | 'standard' | 'deep'
+
+  // Hard floor: never waste standard/deep tokens on trivially small files.
+  // The model can't produce meaningful structured output for <300 chars anyway,
+  // so override to fast regardless of the user-chosen precision.
+  if (tier !== "fast" && content.length < 300) {
+    mode = Object.assign({}, PRECISION_MODES.fast, { _name: "fast" });
+    tier = "fast";
+  }
 
   var truncated = smartTruncate(content, mode.maxChars);
 
@@ -710,8 +722,16 @@ export async function analyzeFileWithOllama(
     lastReasons = v.reasons;
 
     if (attempt + 1 < maxAttempts) {
-      if (isDebugEnabled()) {
-        appendFileSync(LOG_FILE, "[ollama] " + rel + " — validation failed: " + v.reasons.join("; ") + " — retrying with corrective preface\n");
+      if (process.env.REPODNA_DEBUG === "1") {
+        var issues = v.reasons.map(function (r) {
+          return r
+            .replace(/\*\*/g, "")
+            .replace(/^missing required (.+?) field$/, "missing: $1")
+            .replace(/^unexpected field "(.+?)" \(not in template\)$/, "rogue field: $1")
+            .replace(/^a field still contains the template placeholder.*$/, "unfilled placeholder")
+            .replace(/^output is too short.*$/, "output too short");
+        });
+        appendFileSync(LOG_FILE, JSON.stringify({ ts: new Date().toISOString(), event: "validation_retry", file: rel, tier: tier, tps: r.tokensPerSecond, issues: issues }) + "\n");
       }
       // Build a tighter retry: prepend a one-shot correction, lower temp.
       var correction =
