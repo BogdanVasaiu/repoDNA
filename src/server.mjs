@@ -36,8 +36,9 @@ import {
 } from "./ollama.mjs";
 import { buildClaudeMd, categorize, buildDependencyGraph } from "./builder.mjs";
 import { getDefaultRules } from "./classifier.mjs";
-import { readCacheVersioned, writeCacheVersioned, recoverCacheFile } from "./cache.mjs";
-import { CACHE_SCHEMA, MIGRATIONS } from "./migrations.mjs";
+import { readCache, writeCache, recoverCacheFile } from "./cache.mjs";
+import { DATA_SCHEMA } from "./migrations.mjs";
+import { migrateStore, validateMigrationsChain } from "./store.mjs";
 
 var GITHUB_REPO = "BogdanVasaiu/repodna";
 var _lastModelsRefresh = 0;
@@ -49,11 +50,11 @@ var _updateCheckCache = null;
 // while per-project caches are migrated/wiped after an update, and a
 // one-time banner afterwards summarising what happened.
 var startupState = {
-  phase: "pending",            // pending | migrating | ready | error
+  phase: "pending",            // pending | ready | error
   message: "Initializing…",
   progress: { current: 0, total: 0 },
-  cacheSchema: 1,              // set from migrations.mjs at boot
-  events: [],                  // { kind: "migrated"|"wiped", file, project, from }
+  dataSchema: DATA_SCHEMA,     // current store schema
+  events: [],                  // { kind: "migrated"|"wiped", from, to, backup }
   startedAt: 0,
   finishedAt: 0,
 };
@@ -297,8 +298,7 @@ async function runAnalysis(config) {
 
   var prevHashes = {};
   try {
-    var _hcRead = readCacheVersioned(hashCacheFile, {});
-    prevHashes = _hcRead.data || {};
+    prevHashes = readCache(hashCacheFile, {}) || {};
     log(
       "info",
       "Hash cache: " + Object.keys(prevHashes).length + " previous entries",
@@ -1041,14 +1041,13 @@ async function _executeRetry(fileId, precisionOverride) {
 // allFiles is the full snapshot used to detect additions in the NEXT run.
 function saveNewFilesCache(cacheFile, newFileIds, allFileIds) {
   try {
-    writeCacheVersioned(cacheFile, { newFiles: newFileIds, allFiles: allFileIds });
+    writeCache(cacheFile, { newFiles: newFileIds, allFiles: allFileIds });
   } catch (e) {}
 }
 
 function loadNewFilesCache(cacheFile) {
   try {
-    var res = readCacheVersioned(cacheFile, null);
-    return res.data;
+    return readCache(cacheFile, null);
   } catch {}
   return null;
 }
@@ -1058,14 +1057,13 @@ function saveHashCache(hashCacheFile, newHashes) {
   try {
     // Save only the current project's files — no accumulation of deleted entries.
     // The "last known hash" for deleted files is now stored in the result cache.
-    writeCacheVersioned(hashCacheFile, newHashes);
+    writeCache(hashCacheFile, newHashes);
   } catch (e) {}
 }
 
 function loadResultCache(resultCacheFile) {
   try {
-    var res = readCacheVersioned(resultCacheFile, {});
-    return res.data || {};
+    return readCache(resultCacheFile, {}) || {};
   } catch {}
   return {};
 }
@@ -1099,7 +1097,7 @@ function saveResultCache(resultCacheFile, events, prevResults, presentFileIds, n
         if (!existingFileIds || existingFileIds.has(k)) cache[k] = prevResults[k];
       }
     }
-    writeCacheVersioned(resultCacheFile, cache);
+    writeCache(resultCacheFile, cache);
   } catch {}
 }
 
@@ -1302,7 +1300,7 @@ export function startServer() {
           phase: startupState.phase,
           message: startupState.message,
           progress: startupState.progress,
-          cacheSchema: startupState.cacheSchema,
+          dataSchema: startupState.dataSchema,
           events: startupState.events,
           startedAt: startupState.startedAt,
           finishedAt: startupState.finishedAt,
@@ -1897,8 +1895,12 @@ export function startServer() {
       process.exit(1);
     });
 
-    server.listen(PORT, function () {
-      console.log("");
+    // Migrate/clear incompatible caches BEFORE the server accepts a single
+    // request, so no endpoint (project list, file tree, cached results, etc.)
+    // can ever read pre-migration data. Synchronous file I/O — fast.
+    runStartupMigrations();
+
+    server.listen(PORT, function () {      console.log("");
       console.log("  +------------------------------------------+");
       console.log("  |  repoDNA is running                    |");
       console.log("  |  Open: http://localhost:" + PORT + "             |");
@@ -1908,124 +1910,62 @@ export function startServer() {
       console.log("");
       // Kick off cache-schema migration for every known project. The UI polls
       // /api/startup-status and shows a blocking overlay until phase === "ready".
-      setImmediate(function () { runStartupMigrations(); });
       resolve(server);
     });
   });
 }
 
 // ─── STARTUP MIGRATIONS ───────────────────────────────────
-// Sanity-check migrations.mjs before we touch any user data. A missing
-// step at any v in 0..CACHE_SCHEMA-1 would silently strand caches at that
-// version forever, so we refuse to run rather than corrupt anything.
-function _validateMigrationsChain() {
-  var problems = [];
-  for (var i = 0; i < CACHE_SCHEMA; i++) {
-    if (!Object.prototype.hasOwnProperty.call(MIGRATIONS, i)) {
-      problems.push("missing MIGRATIONS[" + i + "] (gap in chain)");
-      continue;
-    }
-    var step = MIGRATIONS[i];
-    if (step !== null && typeof step !== "function") {
-      problems.push("MIGRATIONS[" + i + "] is " + typeof step + ", expected null or function");
-    }
-  }
-  var keys = Object.keys(MIGRATIONS).map(Number);
-  for (var k = 0; k < keys.length; k++) {
-    if (keys[k] >= CACHE_SCHEMA) {
-      problems.push("MIGRATIONS[" + keys[k] + "] exists but CACHE_SCHEMA is " + CACHE_SCHEMA);
-    }
-  }
-  return problems;
-}
-
-// Walks every per-project cache through cache.mjs, which transparently
-// migrates or wipes-with-backup as defined in migrations.mjs. Runs once
-// per server boot, right after server.listen().
+// Migrates the WHOLE ~/.repodna store (config + all caches) exactly once,
+// BEFORE the server accepts any request. Incompatible → the store is moved
+// aside to a timestamped backup and recreated empty (start from zero).
+// Delegates the actual work to store.mjs / migrations.mjs.
 function runStartupMigrations() {
   try {
-    startupState.cacheSchema = CACHE_SCHEMA;
-    startupState.phase = "migrating";
+    startupState.dataSchema = DATA_SCHEMA;
+    startupState.phase = "pending";
     startupState.startedAt = Date.now();
     startupState.events = [];
 
-    var chainProblems = _validateMigrationsChain();
+    // Refuse to touch anything if the migration chain itself is malformed.
+    var chainProblems = validateMigrationsChain();
     if (chainProblems.length > 0) {
       startupState.phase = "error";
       startupState.message =
-        "migrations.mjs is invalid — refusing to touch caches. Problems: " +
+        "migrations.mjs is invalid — refusing to touch the data store. Problems: " +
         chainProblems.join("; ");
       startupState.finishedAt = Date.now();
       log("error", startupState.message);
-      console.error("\n  \x1b[31m✗ Cache migration self-check failed\x1b[0m");
+      console.error("\n  \x1b[31m✗ Data-store migration self-check failed\x1b[0m");
       chainProblems.forEach(function (m) { console.error("    " + m); });
       console.error("");
       return;
     }
 
-    var projects = getProjectList();
-    var cacheFns = [
-      { name: "hashes",    fn: hashCachePath },
-      { name: "results",   fn: resultCachePath },
-      { name: "new-files", fn: newFilesCachePath },
-    ];
-    startupState.progress.total = projects.length * cacheFns.length;
-    startupState.progress.current = 0;
-    for (var pi = 0; pi < projects.length; pi++) {
-      var proj = projects[pi];
-      for (var ci = 0; ci < cacheFns.length; ci++) {
-        var spec = cacheFns[ci];
-        var file = "";
-        try {
-          file = spec.fn(proj.projectPath);
-          recoverCacheFile(file);
-          var defaultVal = spec.name === "new-files" ? null : {};
-          var result = readCacheVersioned(file, defaultVal);
-          if (result && result.didMigrate) {
-            startupState.events.push({
-              kind: "migrated",
-              project: proj.projectPath,
-              cache: spec.name,
-              from: result.fromSchema,
-              to: CACHE_SCHEMA,
-            });
-          } else if (result && result.didWipe) {
-            startupState.events.push({
-              kind: "wiped",
-              project: proj.projectPath,
-              cache: spec.name,
-              from: result.fromSchema,
-              reason: result.reason || "incompatible",
-            });
-          }
-        } catch (e) {
-          startupState.events.push({
-            kind: "error",
-            project: proj.projectPath,
-            cache: spec.name,
-            file: file,
-            error: String(e && e.message || e),
-          });
-        }
-        startupState.progress.current++;
-        startupState.message =
-          "Checking caches: " + startupState.progress.current + " / " + startupState.progress.total;
-      }
-    }
+    var result = migrateStore();        // synchronous; wipes/transforms the store
+    startupState.events = result.events || [];
+    startupState.progress = { current: 1, total: 1 };
     startupState.phase = "ready";
     startupState.finishedAt = Date.now();
     startupState.message = "Ready";
-    if (startupState.events.length > 0) {
-      var migCount  = startupState.events.filter(function (e) { return e.kind === "migrated"; }).length;
-      var wipeCount = startupState.events.filter(function (e) { return e.kind === "wiped";    }).length;
-      log("info",
-        "Cache schema check complete: " + migCount + " migrated, " + wipeCount + " rebuilt " +
-        "(current schema: " + CACHE_SCHEMA + ")"
+
+    if (result.kind === "incompatible") {
+      var bak = (result.events[0] && result.events[0].backup) || "(backup)";
+      console.log(
+        "\n  \x1b[33m⚠ Incompatible data store (schema " + result.from + " → " + result.to + ")\x1b[0m"
       );
+      console.log("    Cleared and started fresh. Previous store backed up to:");
+      console.log("    \x1b[36m" + bak + "\x1b[0m\n");
+      log("info", "Store wiped (incompatible " + result.from + "→" + result.to + "), backup: " + bak);
+    } else if (result.kind === "migrated") {
+      console.log("\n  \x1b[32m✓ Data store migrated " + result.from + " → " + result.to + "\x1b[0m\n");
+      log("info", "Store migrated " + result.from + "→" + result.to);
+    } else if (result.kind === "error") {
+      log("error", "Store migration error; store was reset. " + JSON.stringify(result.events));
     }
   } catch (e) {
     startupState.phase = "error";
-    startupState.message = "Migration error: " + (e && e.message || e);
+    startupState.message = "Migration error: " + ((e && e.message) || e);
     startupState.finishedAt = Date.now();
   }
 }

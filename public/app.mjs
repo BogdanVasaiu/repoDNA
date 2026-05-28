@@ -699,8 +699,9 @@ async function _awaitStartupMigration() {
     // ready or error
     if (overlay) overlay.style.display = "none";
     _renderStartupBanner(status);
-    // Acknowledge so a manual reload doesn't show the banner forever.
-    try { fetch("/api/startup-status", { method: "POST" }); } catch {}
+    // NOTE: we no longer auto-acknowledge here. The banner persists until the
+    // user dismisses it (the ✕ button POSTs the ack). This guarantees the
+    // migration result is seen even if the page is reloaded.
     return;
   }
   if (overlay) overlay.style.display = "none";
@@ -727,8 +728,8 @@ function _renderStartupBanner(status) {
     sub = migrated + " migrated · " + wiped + " rebuilt (incompatible). Old data backed up as .bak files.";
   } else if (wiped > 0) {
     cls = "warn";
-    title = "Caches rebuilt";
-    sub = wiped + " cache file(s) were from an incompatible version and will be regenerated on next analysis. Originals kept as .bak.";
+    title = "Caches cleared";
+    sub = wiped + " cache file(s) from an incompatible version were cleared on startup (before any data was loaded). Your next analysis rebuilds them. Originals kept as .bak.";
   } else {
     cls = "";
     title = "Caches migrated";
@@ -741,9 +742,13 @@ function _renderStartupBanner(status) {
     '<div class="sb-sub">' + sub + '</div>';
   banner.style.display = "block";
   var closeBtn = banner.querySelector(".sb-close");
-  if (closeBtn) closeBtn.onclick = function () { banner.style.display = "none"; };
-  // Auto-dismiss after 12s if user doesn't close it.
-  setTimeout(function () { banner.style.display = "none"; }, 12000);
+  if (closeBtn) closeBtn.onclick = function () {
+    banner.style.display = "none";
+    // Acknowledge only on explicit dismiss, so reloading the page keeps
+    // showing the banner until the user has actually seen and closed it.
+    try { fetch("/api/startup-status", { method: "POST" }); } catch {}
+  };
+  // No auto-dismiss — the migration result stays visible until dismissed.
 }
 
 // ═══════════════════════════════════════════════════════════

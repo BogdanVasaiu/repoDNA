@@ -8,7 +8,7 @@ import { createInterface } from "readline";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf-8"));
 const CURRENT = pkg.version;
-const CURRENT_SCHEMA = typeof pkg.cacheSchema === "number" ? pkg.cacheSchema : 0;
+const CURRENT_SCHEMA = typeof pkg.dataSchema === "number" ? pkg.dataSchema : 0;
 const GITHUB_REPO = "BogdanVasaiu/repodna";
 const SERVER_PORT = 3741;
 
@@ -54,7 +54,9 @@ if (await isServerRunning()) {
 }
 
 function run(cmd) {
-  return execSync(cmd, { cwd: __dirname, encoding: "utf-8" }).trim();
+  // Capture stderr too (don't let git's progress/hint chatter leak to the
+  // terminal). On failure execSync throws with .stderr attached.
+  return execSync(cmd, { cwd: __dirname, encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }).trim();
 }
 
 function compareVersions(a, b) {
@@ -97,7 +99,7 @@ function parseMigrationsModule(text) {
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/\/\/[^\n]*/g, "");
 
-  const schemaMatch = cleaned.match(/export\s+const\s+CACHE_SCHEMA\s*=\s*(\d+)/);
+  const schemaMatch = cleaned.match(/export\s+const\s+DATA_SCHEMA\s*=\s*(\d+)/);
   const schema = schemaMatch ? parseInt(schemaMatch[1], 10) : 0;
 
   const entries = {};
@@ -193,11 +195,11 @@ let analysis = null;
 try {
   const remotePkgText = await fetchRawAtTag(targetTag, "package.json");
   const remotePkg = JSON.parse(remotePkgText);
-  const remoteSchema = typeof remotePkg.cacheSchema === "number" ? remotePkg.cacheSchema : 0;
+  const remoteSchema = typeof remotePkg.dataSchema === "number" ? remotePkg.dataSchema : 0;
 
   let entries = {};
   try {
-    const migText = await fetchRawAtTag(targetTag, "migrations.mjs");
+    const migText = await fetchRawAtTag(targetTag, "src/migrations.mjs");
     entries = parseMigrationsModule(migText).entries;
   } catch {
     // Pre-2.0.0 versions don't have migrations.mjs — fall back to "incompatible
@@ -220,22 +222,22 @@ if (CURRENT !== targetVersion) {
 if (releaseUrl) console.log("  " + C + releaseUrl + X);
 
 if (analysis.kind === "compatible") {
-  console.log("  " + G + "✓ Cache: compatible" + X + D + " (no rebuild, no data loss)" + X);
+  console.log("  " + G + "✓ Data store: compatible" + X + D + " (kept as-is, no data loss)" + X);
 } else if (analysis.kind === "semi") {
-  console.log("  " + Y + "⚠ Cache: semi-compatible" + X +
-    D + " (" + analysis.steps + " migration step(s) — caches will be transformed in place; originals backed up as .bak)" + X);
+  console.log("  " + Y + "⚠ Data store: semi-compatible" + X +
+    D + " (" + analysis.steps + " migration step(s) — data transformed in place on first launch; previous store backed up)" + X);
 } else if (analysis.kind === "incompatible") {
-  console.log("  " + R + "✗ Cache: incompatible" + X +
+  console.log("  " + R + "✗ Data store: incompatible" + X +
     D + " (break at schema " + analysis.breakAt + " → " + (analysis.breakAt + 1) + ")" + X);
-  console.log("    Your cached analysis results will be " + B + "rebuilt from scratch" + X +
-    " on first launch.");
-  console.log("    " + D + "Old files are preserved as <file>.incompatible.bak inside ~/.repodna/projects/" + X);
-  console.log("    " + D + "Tip: " + X + C + "node update.mjs --to v" + Math.max(0, analysis.breakAt) + ".x.x" + X +
-    D + " can pin to an earlier compatible version (if one exists)." + X);
+  console.log("    On first launch your entire repoDNA store (projects, settings, caches) will be");
+  console.log("    " + B + "cleared and started from zero" + X + " — before any data is loaded.");
+  console.log("    " + D + "The previous store is preserved at ~/.repodna.incompatible-bak-<timestamp>" + X);
+  console.log("    " + D + "To stay on an earlier compatible release, pin a tag with " + X +
+    C + "--to v<version>" + X + D + " (see " + X + C + "https://github.com/" + GITHUB_REPO + "/releases" + X + D + ")." + X);
 } else if (analysis.kind === "downgrade") {
-  console.log("  " + Y + "⚠ Cache: target schema is older than current — caches will be ignored." + X);
+  console.log("  " + Y + "⚠ Data store: target schema is older than current — store will be left untouched." + X);
 } else {
-  console.log("  " + D + "Cache: unknown (could not analyse remote migrations)." + X);
+  console.log("  " + D + "Data store: unknown (could not analyse remote migrations)." + X);
 }
 
 // ─── CONFIRM ───────────────────────────────────────────────
@@ -274,8 +276,20 @@ try {
     run("git checkout " + targetTag);
     console.log("  " + D + "Checked out " + targetTag + X);
   } else {
-    const out = run("git pull --ff-only origin main");
-    console.log("  " + D + out.split("\n").join("\n  ") + X);
+    try {
+      const out = run("git pull --ff-only origin main");
+      console.log("  " + D + out.split("\n").join("\n  ") + X);
+    } catch (ffErr) {
+      // Local main diverged from origin (local commits, or an edited/detached
+      // tree) so a fast-forward isn't possible. Fall back to checking out the
+      // release tag directly — that lands exactly on the released code
+      // regardless of local branch state. The working tree is already clean
+      // here (committed, or stashed above), so checkout is safe.
+      console.log("  " + Y + "⚠" + X + " Fast-forward not possible (local history diverged).");
+      console.log("  " + D + "Checking out " + targetTag + " directly..." + X);
+      run("git checkout " + targetTag);
+      console.log("  " + D + "Checked out " + targetTag + X);
+    }
   }
 } catch (e) {
   console.error("  " + R + "✗" + X + " update failed: " + e.message);
@@ -296,9 +310,9 @@ if (stashed) {
 
 console.log("\n  " + G + "✓" + X + " Updated to " + B + G + targetVersion + X + "!");
 if (analysis.kind === "incompatible") {
-  console.log("  " + Y + "Heads-up:" + X + " caches will be rebuilt on first launch (preserved as .bak).");
+  console.log("  " + Y + "Heads-up:" + X + " your data store will be cleared from zero on first launch (previous store backed up).");
 } else if (analysis.kind === "semi") {
-  console.log("  " + D + "Caches will be migrated on first launch." + X);
+  console.log("  " + D + "Your data store will be migrated on first launch (previous store backed up)." + X);
 }
 console.log("  Restart repoDNA to apply:\n");
 console.log("    " + C + "node main.mjs" + X + "\n");

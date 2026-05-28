@@ -1,53 +1,55 @@
-// ─── CACHE MIGRATIONS ─────────────────────────────────────
-// Every per-project cache file (hashes.json, results.json, new-files.json)
-// is stamped with the CACHE_SCHEMA in use when it was written.
+// ─── DATA-STORE MIGRATIONS ────────────────────────────────
+// A SINGLE schema number governs the ENTIRE ~/.repodna store: the global
+// config.json (project list, settings, rules), every per-project cache
+// (hashes/results/new-files), and anything else under that directory.
 //
-// When repoDNA boots, each cache is read through cache.mjs which walks the
-// MIGRATIONS chain from the file's stored schema up to CACHE_SCHEMA.
+// The current version lives in ~/.repodna/.schema (a plain integer file).
+// A store with no .schema file is treated as schema 0 (the pre-2.0 "v1" layout).
 //
-// One number, three behaviours per step:
+// On startup (before the server accepts any request) store.mjs walks the
+// MIGRATIONS chain from the store's schema up to DATA_SCHEMA. Each step is
+// one of three things:
 //
-//   MIGRATIONS[N] = (data) => data            // identity → COMPATIBLE
-//   MIGRATIONS[N] = (data) => transform(data) // shape change → SEMI-COMPATIBLE
-//   MIGRATIONS[N] = null                      // breaking → INCOMPATIBLE (wipe)
+//   MIGRATIONS[N] = null                 // breaking  → WIPE the whole store
+//                                        //             (moved aside to a backup)
+//   MIGRATIONS[N] = (dataDir) => {...}   // shape change → TRANSFORM in place
+//   MIGRATIONS[N] = (dataDir) => {}      // no-op        → COMPATIBLE (kept)
+//
+// Philosophy (per product decision): if data CAN be carried forward, write a
+// transform and keep it. If it can't, wipe everything and start from zero —
+// never let stale, incompatible data flow into a new version's UI.
 //
 // Rules for future releases:
 //   1. NEVER edit an existing migration. Add a new one.
-//   2. Bump CACHE_SCHEMA by exactly 1 each time the cache shape changes.
-//   3. Add MIGRATIONS[CACHE_SCHEMA - 1] describing how to go from
-//      the previous shape to the new one.
+//   2. Bump DATA_SCHEMA by exactly 1 each time the on-disk layout changes.
+//   3. Add MIGRATIONS[DATA_SCHEMA - 1] describing the previous → new step.
 //
-// v1 (pre-2.0.0) wrote raw JSON with no schema field. cache.mjs treats
-// missing _schemaVersion as 0. MIGRATIONS[0] = null below makes the
-// v1 → v2 transition INCOMPATIBLE — old caches are preserved as
-// "<file>.incompatible.bak" and rebuilt on next analysis.
+// v1 (pre-2.0.0) had no .schema file and a different cache layout, so
+// MIGRATIONS[0] = null makes v1 → v2 a full wipe (with backup).
 
-export const CACHE_SCHEMA = 1;
+export const DATA_SCHEMA = 1;
 
 export const MIGRATIONS = {
-  // 0 → 1 : v1 caches are incompatible with v2.0.0
+  // 0 → 1 : the entire v1 store is incompatible with v2.0.0 → wipe + back up.
   0: null,
 };
 
 // ─── PURE CHAIN ANALYSIS (used by update.mjs) ─────────────
-// Walks the chain without running anything. Returns:
-//   { kind: "compatible" | "semi" | "incompatible", breakAt?, steps }
-export function classifyChain(fromSchema, toSchema, migrations) {
+// Walks the chain WITHOUT executing anything. Returns:
+//   { kind: "compatible" | "semi" | "incompatible" | "downgrade", breakAt?, steps }
+// `entries` maps schema → null | "transform" (update.mjs sniffs this from source).
+export function classifyChain(fromSchema, toSchema, entries) {
   if (toSchema === fromSchema) return { kind: "compatible", steps: 0 };
   if (toSchema < fromSchema) return { kind: "downgrade", steps: 0 };
   let hasTransform = false;
   for (let v = fromSchema; v < toSchema; v++) {
-    const step = migrations[v];
+    const step = entries[v];
     if (step === null || step === undefined) {
       return { kind: "incompatible", breakAt: v, steps: v - fromSchema };
     }
-    // identity functions are detected by source-string sniff in update.mjs;
-    // at runtime we cannot tell identity from transform without calling them,
-    // so we conservatively treat every non-null entry as a real step.
+    // At runtime we can't tell identity from transform without calling, so any
+    // non-null entry counts as a real step (update.mjs makes the same choice).
     hasTransform = true;
   }
-  return {
-    kind: hasTransform ? "semi" : "compatible",
-    steps: toSchema - fromSchema,
-  };
+  return { kind: hasTransform ? "semi" : "compatible", steps: toSchema - fromSchema };
 }

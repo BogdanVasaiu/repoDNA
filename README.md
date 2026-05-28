@@ -143,6 +143,7 @@ All repoDNA data lives in `~/.repodna/` — never inside your projects. The only
 
 ```
 ~/.repodna/
+  .schema                  ← data-store schema version (one integer)
   config.json              ← global settings and project list
   projects/
     <encoded-path>/
@@ -151,7 +152,13 @@ All repoDNA data lives in `~/.repodna/` — never inside your projects. The only
       new-files.json       ← new file tracking
 ```
 
-Cache files are versioned and automatically migrated when you update repoDNA. If a release ever changes the cache format in a way that can't be migrated, the originals are preserved as `.incompatible.bak` next to the new files — nothing is silently destroyed.
+The whole store carries a single schema version (`.schema`). On startup — **before** the server accepts any request — repoDNA migrates the store to the running version:
+
+- **Compatible** → kept as-is.
+- **Semi-compatible** → transformed in place to the new layout.
+- **Incompatible** → the entire store is cleared and started from zero, so no stale data can reach the new UI. The previous store is preserved at `~/.repodna.incompatible-bak-<timestamp>` — nothing is silently destroyed.
+
+`node update.mjs` analyses this *before* updating and tells you which of the three will happen.
 
 ---
 
@@ -197,13 +204,13 @@ node uninstall.mjs --yes
 
 ## Development
 
-The cache + migration system has a small integration test suite that exercises every read/write path and crash-recovery scenario. Run it from the repo root:
+The store-migration + cache system has an integration test suite covering whole-store migration (wipe/keep/transform), crash-safe cache I/O, and chain self-consistency. Run it from the repo root:
 
 ```bash
-node tests/cache.test.mjs
+node tests/store.test.mjs
 ```
 
-Run this before tagging a new release — especially if you've touched `src/cache.mjs` or `src/migrations.mjs`.
+Run this before tagging a new release — especially if you've touched `src/store.mjs`, `src/cache.mjs`, or `src/migrations.mjs`.
 
 ---
 

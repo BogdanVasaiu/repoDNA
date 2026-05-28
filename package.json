@@ -1,13 +1,13 @@
 {
   "name": "repodna",
   "version": "2.0.0",
-  "cacheSchema": 1,
+  "dataSchema": 1,
   "type": "module",
   "main": "main.mjs",
   "scripts": {
     "start": "node main.mjs",
     "start:debug": "node main.mjs --debug",
-    "test": "node tests/cache.test.mjs",
+    "test": "node tests/store.test.mjs",
     "uninstall": "node uninstall.mjs"
   }
 }
