@@ -151,6 +151,8 @@ All repoDNA data lives in `~/.repodna/` — never inside your projects. The only
       new-files.json       ← new file tracking
 ```
 
+Cache files are versioned and automatically migrated when you update repoDNA. If a release ever changes the cache format in a way that can't be migrated, the originals are preserved as `.incompatible.bak` next to the new files — nothing is silently destroyed.
+
 ---
 
 ## Other Commands
@@ -169,10 +171,17 @@ node main.mjs --help
 node main.mjs --debug
 ```
 
-**Update** — checks GitHub for a newer release and pulls it automatically. Your data in `~/.repodna/` is never touched:
+**Update** — checks GitHub for a newer release, analyses whether its cache format is compatible with yours, and pulls it. Your data in `~/.repodna/` is preserved across updates (and backed up to `.bak` files if a version ever requires a rebuild):
 
 ```bash
 node update.mjs
+
+# Update without the interactive confirmation prompt:
+node update.mjs --yes
+
+# Pin to a specific tag instead of "latest" (e.g. to stay on a
+# compatible version when latest would rebuild your caches):
+node update.mjs --to v2.0.0
 
 # Stash uncommitted local changes, update, then restore them:
 node update.mjs --force
@@ -183,6 +192,18 @@ node update.mjs --force
 ```bash
 node uninstall.mjs --yes
 ```
+
+---
+
+## Development
+
+The cache + migration system has a small integration test suite that exercises every read/write path and crash-recovery scenario. Run it from the repo root:
+
+```bash
+node tests/cache.test.mjs
+```
+
+Run this before tagging a new release — especially if you've touched `src/cache.mjs` or `src/migrations.mjs`.
 
 ---
 
