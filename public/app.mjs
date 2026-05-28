@@ -657,6 +657,96 @@ function _revealApp() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// STARTUP / CACHE-SCHEMA MIGRATION OVERLAY
+// Polls /api/startup-status until the server reports phase === "ready",
+// keeping the UI blocked with a progress overlay while caches are
+// migrated/rebuilt after a version bump. Surfaces a one-time banner
+// summarising what changed.
+// ═══════════════════════════════════════════════════════════
+async function _awaitStartupMigration() {
+  var overlay = document.getElementById("startup-overlay");
+  var msgEl   = document.getElementById("startup-overlay-msg");
+  var barEl   = document.getElementById("startup-overlay-bar");
+  var pctEl   = document.getElementById("startup-overlay-pct");
+  var shown = false;
+  var firstStatus = null;
+  var attempts = 0;
+
+  while (true) {
+    var status;
+    try {
+      var r = await fetch("/api/startup-status", { cache: "no-store" });
+      status = await r.json();
+    } catch (e) {
+      // server still booting — wait and retry
+      await new Promise(function (res) { setTimeout(res, 200); });
+      if (++attempts > 100) break; // ~20s safety cap
+      continue;
+    }
+    if (!firstStatus) firstStatus = status;
+
+    if (status.phase === "migrating" || status.phase === "pending") {
+      if (!shown && overlay) { overlay.style.display = "flex"; shown = true; }
+      var cur = (status.progress && status.progress.current) || 0;
+      var tot = (status.progress && status.progress.total) || 0;
+      if (msgEl) msgEl.textContent = status.message || "Working…";
+      if (pctEl) pctEl.textContent = cur + " / " + tot;
+      if (barEl) barEl.style.width = (tot > 0 ? Math.round((cur / tot) * 100) : 0) + "%";
+      await new Promise(function (res) { setTimeout(res, 200); });
+      continue;
+    }
+
+    // ready or error
+    if (overlay) overlay.style.display = "none";
+    _renderStartupBanner(status);
+    // Acknowledge so a manual reload doesn't show the banner forever.
+    try { fetch("/api/startup-status", { method: "POST" }); } catch {}
+    return;
+  }
+  if (overlay) overlay.style.display = "none";
+}
+
+function _renderStartupBanner(status) {
+  if (!status || !status.events || status.events.length === 0) return;
+  var banner = document.getElementById("startup-banner");
+  if (!banner) return;
+  var migrated = status.events.filter(function (e) { return e.kind === "migrated"; }).length;
+  var wiped    = status.events.filter(function (e) { return e.kind === "wiped"; }).length;
+  var errors   = status.events.filter(function (e) { return e.kind === "error"; }).length;
+
+  var cls = "";
+  var title = "";
+  var sub = "";
+  if (errors > 0) {
+    cls = "err";
+    title = "Cache check finished with errors";
+    sub = errors + " cache file(s) could not be processed. Check the logs.";
+  } else if (wiped > 0 && migrated > 0) {
+    cls = "warn";
+    title = "Caches updated";
+    sub = migrated + " migrated · " + wiped + " rebuilt (incompatible). Old data backed up as .bak files.";
+  } else if (wiped > 0) {
+    cls = "warn";
+    title = "Caches rebuilt";
+    sub = wiped + " cache file(s) were from an incompatible version and will be regenerated on next analysis. Originals kept as .bak.";
+  } else {
+    cls = "";
+    title = "Caches migrated";
+    sub = migrated + " cache file(s) upgraded to schema " + (status.cacheSchema || "?") + ".";
+  }
+  banner.className = cls;
+  banner.innerHTML =
+    '<button class="sb-close" aria-label="Dismiss">✕</button>' +
+    '<div class="sb-title">' + title + '</div>' +
+    '<div class="sb-sub">' + sub + '</div>';
+  banner.style.display = "block";
+  var closeBtn = banner.querySelector(".sb-close");
+  if (closeBtn) closeBtn.onclick = function () { banner.style.display = "none"; };
+  // Auto-dismiss after 12s if user doesn't close it.
+  setTimeout(function () { banner.style.display = "none"; }, 12000);
+}
+
+// ═══════════════════════════════════════════════════════════
 // SSE
 // ═══════════════════════════════════════════════════════════
 var es = null;
@@ -5665,6 +5755,11 @@ window._openFindCard = function () {
 // INIT
 // ═══════════════════════════════════════════════════════════
 window.addEventListener("DOMContentLoaded", async function () {
+  // Block the app until any per-project cache-schema migrations finish.
+  // Shows a full-screen overlay with progress; falls through immediately if
+  // the server is already in "ready" state with no pending events.
+  await _awaitStartupMigration();
+
   _loadModelStats();
   checkForUpdate();
   runChecks();

@@ -711,7 +711,82 @@
 
   </div><!-- end main-content -->
 <div id="app-loader"><div class="spinner"></div></div>
+
+<!-- STARTUP / MIGRATION OVERLAY ────────────────────────────
+     Shown while the server upgrades per-project caches after a version
+     bump (see /api/startup-status). Blocks the UI until phase === "ready". -->
+<div id="startup-overlay" style="display:none;">
+  <div class="startup-card">
+    <div class="spinner" style="margin:0 auto 18px"></div>
+    <div class="startup-title">Updating cached data…</div>
+    <div class="startup-sub" id="startup-overlay-msg">Checking caches…</div>
+    <div class="startup-progress"><div class="startup-progress-bar" id="startup-overlay-bar"></div></div>
+    <div class="startup-progress-text" id="startup-overlay-pct">0 / 0</div>
+    <div class="startup-foot">Your previous results are preserved on disk as <code>.bak</code> files if anything is rebuilt. Do not close this window.</div>
+  </div>
+</div>
+
+<!-- POST-MIGRATION BANNER (one-shot, dismissible) -->
+<div id="startup-banner" style="display:none;"></div>
 </div><!-- end app -->
+
+<style>
+  #startup-overlay {
+    position: fixed; inset: 0; z-index: 99999;
+    background: rgba(13,17,23,0.92);
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  #startup-overlay .startup-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 32px 36px;
+    max-width: 460px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    color: #c9d1d9;
+  }
+  #startup-overlay .startup-title {
+    font-size: 17px; font-weight: 600; color: #f0f6fc; margin-bottom: 6px;
+  }
+  #startup-overlay .startup-sub {
+    font-size: 13px; color: #8b949e; margin-bottom: 18px;
+  }
+  #startup-overlay .startup-progress {
+    height: 6px; background: #30363d; border-radius: 999px; overflow: hidden; margin: 0 auto 6px;
+  }
+  #startup-overlay .startup-progress-bar {
+    height: 100%; width: 0%; background: var(--dna-green, #3fb950); transition: width 0.2s ease;
+  }
+  #startup-overlay .startup-progress-text {
+    font-size: 11px; color: #6e7681; font-family: 'DM Mono', monospace; margin-bottom: 16px;
+  }
+  #startup-overlay .startup-foot {
+    font-size: 11px; color: #6e7681; line-height: 1.5;
+  }
+  #startup-overlay .startup-foot code {
+    background: #0d1117; padding: 1px 6px; border-radius: 4px; color: #c9d1d9;
+  }
+  #startup-banner {
+    position: fixed; top: 12px; right: 12px; z-index: 9998;
+    max-width: 420px;
+    background: #161b22; border: 1px solid #30363d; border-left: 3px solid var(--dna-green, #3fb950);
+    border-radius: 8px; padding: 12px 14px;
+    font-family: 'DM Sans', system-ui, sans-serif; color: #c9d1d9; font-size: 13px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  #startup-banner .sb-title { font-weight: 600; color: #f0f6fc; margin-bottom: 4px; }
+  #startup-banner .sb-sub { font-size: 12px; color: #8b949e; line-height: 1.5; }
+  #startup-banner .sb-close {
+    position: absolute; top: 6px; right: 8px;
+    background: transparent; border: 0; color: #8b949e; cursor: pointer; font-size: 14px;
+  }
+  #startup-banner.warn { border-left-color: #d29922; }
+  #startup-banner.err  { border-left-color: #f85149; }
+</style>
 
 <script type="module" src="app.mjs"></script>
 

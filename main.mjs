@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { startServer } from "./server.mjs";
+import { startServer } from "./src/server.mjs";
 import { exec } from "child_process";
 
 var args = process.argv.slice(2);
