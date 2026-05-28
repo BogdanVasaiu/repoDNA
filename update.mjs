@@ -33,6 +33,14 @@ function argOf(name) {
   return args[i + 1] || null;
 }
 const targetArg = argOf("--to"); // optional: pin to a specific tag
+const listMode = args.includes("--list") || args.includes("--versions") || args.includes("-l");
+
+// `--list` is read-only: print the version/compatibility table and exit
+// before any server check or update logic.
+if (listMode) {
+  await listVersions();
+  process.exit(0);
+}
 
 async function isServerRunning() {
   try {
@@ -152,10 +160,100 @@ function classifyChain(fromSchema, toSchema, entries) {
   return { kind: hasTransform ? "semi" : "compatible", steps: toSchema - fromSchema };
 }
 
+// ─── VERSION / COMPATIBILITY TABLE (--list) ────────────────
+// Shows every release and, for those newer than the current install, whether
+// updating to it would keep / transform / wipe your ~/.repodna data store.
+async function listVersions() {
+  console.log("\n  " + B + "repoDNA — versions" + X);
+  console.log(D + "  ───────────────────────────────────" + X);
+  console.log("  Installed: " + B + CURRENT + X + D + "  (data schema " + CURRENT_SCHEMA + ")" + X);
+
+  let releases;
+  try {
+    process.stdout.write("  Fetching releases from GitHub... ");
+    const res = await fetch(
+      `https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=100`,
+      { headers: { "User-Agent": "repoDNA/" + CURRENT } }
+    );
+    if (!res.ok) throw new Error("GitHub API returned " + res.status);
+    releases = await res.json();
+    console.log(G + "done" + X);
+  } catch (e) {
+    console.log(R + "failed" + X);
+    console.error("\n  " + R + "✗" + X + " Could not reach GitHub: " + e.message + "\n");
+    process.exit(1);
+  }
+
+  const rels = (Array.isArray(releases) ? releases : [])
+    .map((r) => ({
+      tag: r.tag_name || "",
+      version: (r.tag_name || "").replace(/^v/, ""),
+      date: (r.published_at || "").slice(0, 10),
+    }))
+    .filter((r) => r.version)
+    .sort((a, b) => compareVersions(a.version, b.version));
+
+  if (rels.length === 0) {
+    console.log("\n  " + D + "No releases found." + X + "\n");
+    return;
+  }
+
+  // Fetch the latest release's migrations chain once (it is cumulative, so it
+  // contains every step). Try src/ first (v2.0.1+), then repo root (older).
+  const latestTag = rels[rels.length - 1].tag;
+  let entries = {};
+  for (const path of ["src/migrations.mjs", "migrations.mjs"]) {
+    try { entries = parseMigrationsModule(await fetchRawAtTag(latestTag, path)).entries; break; } catch {}
+  }
+
+  // Resolve each release's data schema (from its package.json) and classify.
+  const rows = [];
+  for (const r of rels) {
+    let schema = 0;
+    for (const path of ["package.json"]) {
+      try {
+        const p = JSON.parse(await fetchRawAtTag(r.tag, path));
+        schema = typeof p.dataSchema === "number" ? p.dataSchema
+               : (typeof p.cacheSchema === "number" ? p.cacheSchema : 0);
+      } catch {}
+    }
+    const cmp = compareVersions(r.version, CURRENT);
+    let sym = " ", color = D, label = "";
+    if (cmp === 0) { sym = "•"; color = B; label = "installed"; }
+    else if (cmp < 0) { sym = " "; color = D; label = "older"; }
+    else {
+      const a = classifyChain(CURRENT_SCHEMA, schema, entries);
+      if (a.kind === "compatible")        { sym = "✓"; color = G; label = "compatible"; }
+      else if (a.kind === "semi")         { sym = "⚠"; color = Y; label = "semi-compatible — data transformed"; }
+      else if (a.kind === "incompatible") { sym = "✗"; color = R; label = "incompatible — store wiped (backed up)"; }
+      else if (a.kind === "downgrade")    { sym = " "; color = D; label = "older schema"; }
+      else                                { sym = "?"; color = D; label = "unknown"; }
+    }
+    rows.push({ version: r.version, date: r.date, schema, sym, color, label });
+  }
+
+  // Print table.
+  const vW = Math.max(7, ...rows.map((r) => r.version.length));
+  console.log("");
+  console.log("  " + D + "  " + "Version".padEnd(vW) + "  " + "Released".padEnd(10) + "  Data compatibility" + X);
+  console.log("  " + D + "  " + "─".repeat(vW) + "  " + "─".repeat(10) + "  ─".repeat(18) + X);
+  for (const r of rows) {
+    console.log(
+      "  " + r.color + r.sym + X + " " +
+      r.color + r.version.padEnd(vW) + X + "  " +
+      D + (r.date || "—").padEnd(10) + X + "  " +
+      r.color + r.label + X
+    );
+  }
+  console.log("");
+  console.log("  " + D + "Update with " + X + C + "node update.mjs" + X +
+    D + ", or pin a version with " + X + C + "node update.mjs --to v<version>" + X + D + "." + X + "\n");
+}
+
 // ─── HEADER ────────────────────────────────────────────────
 console.log("\n  " + B + "repoDNA updater" + X);
 console.log(D + "  ───────────────────────────────────" + X);
-console.log("  Current version: " + B + CURRENT + X + D + "  (cache schema " + CURRENT_SCHEMA + ")" + X);
+console.log("  Current version: " + B + CURRENT + X + D + "  (data schema " + CURRENT_SCHEMA + ")" + X);
 
 // ─── DETERMINE TARGET ──────────────────────────────────────
 let targetTag, targetVersion, releaseUrl = "";

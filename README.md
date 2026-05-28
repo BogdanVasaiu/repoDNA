@@ -178,7 +178,22 @@ node main.mjs --help
 node main.mjs --debug
 ```
 
-**Update** — checks GitHub for a newer release, analyses whether its cache format is compatible with yours, and pulls it. Your data in `~/.repodna/` is preserved across updates (and backed up to `.bak` files if a version ever requires a rebuild):
+**List versions** — shows every release in a table, marking your installed version and, for each newer one, whether updating would keep / transform / wipe your `~/.repodna` data store:
+
+```bash
+node update.mjs --list
+```
+
+```
+  Version  Released    Data compatibility
+  ───────  ──────────  ──────────────────
+• 2.0.1    2026-05-28  installed
+✓ 2.1.0    ...         compatible
+⚠ 3.0.0    ...         semi-compatible — data transformed
+✗ 4.0.0    ...         incompatible — store wiped (backed up)
+```
+
+**Update** — checks GitHub for a newer release, analyses whether its data layout is compatible with yours, and pulls it. Compatible/semi-compatible updates preserve (and transform) your data; an incompatible update clears the store from zero, backing the old one up to `~/.repodna.incompatible-bak-<timestamp>` first:
 
 ```bash
 node update.mjs
@@ -187,7 +202,7 @@ node update.mjs
 node update.mjs --yes
 
 # Pin to a specific tag instead of "latest" (e.g. to stay on a
-# compatible version when latest would rebuild your caches):
+# compatible version when latest would wipe your data):
 node update.mjs --to v2.0.0
 
 # Stash uncommitted local changes, update, then restore them:
