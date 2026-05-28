@@ -82,7 +82,13 @@ function compareVersions(a, b) {
 function prompt(q) {
   return new Promise(resolve => {
     const rl = createInterface({ input: process.stdin, output: process.stdout });
-    rl.question(q, ans => { rl.close(); resolve(ans); });
+    let answered = false;
+    // EOF / closed stdin (non-TTY, Ctrl+D) fires "close" without ever calling
+    // the question callback — resolve empty so the promise always settles.
+    // The guard prevents the rl.close() below (which also emits "close") from
+    // clobbering a real answer with "".
+    rl.on("close", () => { if (!answered) resolve(""); });
+    rl.question(q, ans => { answered = true; resolve(ans); rl.close(); });
   });
 }
 
