@@ -711,29 +711,26 @@ function _renderStartupBanner(status) {
   if (!status || !status.events || status.events.length === 0) return;
   var banner = document.getElementById("startup-banner");
   if (!banner) return;
-  var migrated = status.events.filter(function (e) { return e.kind === "migrated"; }).length;
-  var wiped    = status.events.filter(function (e) { return e.kind === "wiped"; }).length;
-  var errors   = status.events.filter(function (e) { return e.kind === "error"; }).length;
+  var migrated   = status.events.filter(function (e) { return e.kind === "migrated"; }).length;
+  var wipedEvent = status.events.filter(function (e) { return e.kind === "wiped"; })[0];
 
   var cls = "";
   var title = "";
   var sub = "";
-  if (errors > 0) {
+  if (wipedEvent && wipedEvent.reason === "error") {
     cls = "err";
-    title = "Cache check finished with errors";
-    sub = errors + " cache file(s) could not be processed. Check the logs.";
-  } else if (wiped > 0 && migrated > 0) {
+    title = "Data store reset";
+    sub = "A migration error occurred, so your repoDNA data store was reset to a clean state to stay safe. Your next analysis rebuilds it.";
+  } else if (wipedEvent) {
     cls = "warn";
-    title = "Caches updated";
-    sub = migrated + " migrated · " + wiped + " rebuilt (incompatible). Old data backed up as .bak files.";
-  } else if (wiped > 0) {
-    cls = "warn";
-    title = "Caches cleared";
-    sub = wiped + " cache file(s) from an incompatible version were cleared on startup (before any data was loaded). Your next analysis rebuilds them. Originals kept as .bak.";
-  } else {
+    title = "Data store cleared";
+    sub = "Your saved repoDNA data was from an incompatible version and was cleared on startup, before anything was loaded. It starts fresh — your next analysis rebuilds it.";
+  } else if (migrated > 0) {
     cls = "";
-    title = "Caches migrated";
-    sub = migrated + " cache file(s) upgraded to schema " + (status.cacheSchema || "?") + ".";
+    title = "Data store updated";
+    sub = "Your saved repoDNA data was upgraded to the new format (schema " + (status.dataSchema || "?") + ") on startup.";
+  } else {
+    return;
   }
   banner.className = cls;
   banner.innerHTML =
