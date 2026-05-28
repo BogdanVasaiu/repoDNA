@@ -156,7 +156,7 @@ The whole store carries a single schema version (`.schema`). On startup — **be
 
 - **Compatible** → kept as-is.
 - **Semi-compatible** → transformed in place to the new layout.
-- **Incompatible** → the entire store is cleared and started from zero, so no stale data can reach the new UI. The previous store is preserved at `~/.repodna.incompatible-bak-<timestamp>` — nothing is silently destroyed.
+- **Incompatible** → the entire store is cleared and started from zero, so no stale data can reach the new UI.
 
 `node update.mjs` analyses this *before* updating and tells you which of the three will happen.
 
@@ -178,7 +178,7 @@ node main.mjs --help
 node main.mjs --debug
 ```
 
-**List versions** — shows every release in a table, marking your installed version and, for each newer one, whether updating would keep / transform / wipe your `~/.repodna` data store:
+**List versions** — shows your installed version and any newer releases in a table, marking for each whether updating would keep / transform / wipe your `~/.repodna` data store (older releases are hidden):
 
 ```bash
 node update.mjs --list
@@ -190,10 +190,10 @@ node update.mjs --list
 • 2.0.1    2026-05-28  installed
 ✓ 2.1.0    ...         compatible
 ⚠ 3.0.0    ...         semi-compatible — data transformed
-✗ 4.0.0    ...         incompatible — store wiped (backed up)
+✗ 4.0.0    ...         incompatible — store wiped
 ```
 
-**Update** — checks GitHub for a newer release, analyses whether its data layout is compatible with yours, and pulls it. Compatible/semi-compatible updates preserve (and transform) your data; an incompatible update clears the store from zero, backing the old one up to `~/.repodna.incompatible-bak-<timestamp>` first:
+**Update** — checks GitHub for a newer release, analyses whether its data layout is compatible with yours, and pulls it. Compatible/semi-compatible updates preserve (and transform) your data; an incompatible update clears the store from zero:
 
 ```bash
 node update.mjs
@@ -201,18 +201,20 @@ node update.mjs
 # Update without the interactive confirmation prompt:
 node update.mjs --yes
 
-# Pin to a specific tag instead of "latest" (e.g. to stay on a
-# compatible version when latest would wipe your data):
-node update.mjs --to v2.0.0
+# Pin to a specific newer tag instead of "latest" (e.g. to stop at a
+# compatible release when the latest one would wipe your data):
+node update.mjs --to v2.1.0
 
 # Stash uncommitted local changes, update, then restore them:
 node update.mjs --force
 ```
 
-**Uninstall** — removes `~/.repodna/` and all cached data. The cloned folder can then be deleted normally:
+> Downgrades are not supported — pinning a version older than the one installed is refused, since migrations only run forward.
+
+**Uninstall** — removes `~/.repodna/` and all cached data (prompts for confirmation; pass `--yes` to skip it). The cloned folder can then be deleted normally:
 
 ```bash
-node uninstall.mjs --yes
+node uninstall.mjs
 ```
 
 ---

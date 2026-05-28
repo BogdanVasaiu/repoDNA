@@ -54,7 +54,7 @@ var startupState = {
   message: "Initializing…",
   progress: { current: 0, total: 0 },
   dataSchema: DATA_SCHEMA,     // current store schema
-  events: [],                  // { kind: "migrated"|"wiped", from, to, backup }
+  events: [],                  // { kind: "migrated"|"wiped", from, to }
   startedAt: 0,
   finishedAt: 0,
 };
@@ -1917,8 +1917,8 @@ export function startServer() {
 
 // ─── STARTUP MIGRATIONS ───────────────────────────────────
 // Migrates the WHOLE ~/.repodna store (config + all caches) exactly once,
-// BEFORE the server accepts any request. Incompatible → the store is moved
-// aside to a timestamped backup and recreated empty (start from zero).
+// BEFORE the server accepts any request. Incompatible → the store is cleared
+// and recreated empty (start from zero).
 // Delegates the actual work to store.mjs / migrations.mjs.
 function runStartupMigrations() {
   try {
@@ -1950,13 +1950,11 @@ function runStartupMigrations() {
     startupState.message = "Ready";
 
     if (result.kind === "incompatible") {
-      var bak = (result.events[0] && result.events[0].backup) || "(backup)";
       console.log(
         "\n  \x1b[33m⚠ Incompatible data store (schema " + result.from + " → " + result.to + ")\x1b[0m"
       );
-      console.log("    Cleared and started fresh. Previous store backed up to:");
-      console.log("    \x1b[36m" + bak + "\x1b[0m\n");
-      log("info", "Store wiped (incompatible " + result.from + "→" + result.to + "), backup: " + bak);
+      console.log("    Cleared and started fresh.\n");
+      log("info", "Store wiped (incompatible " + result.from + "→" + result.to + ")");
     } else if (result.kind === "migrated") {
       console.log("\n  \x1b[32m✓ Data store migrated " + result.from + " → " + result.to + "\x1b[0m\n");
       log("info", "Store migrated " + result.from + "→" + result.to);

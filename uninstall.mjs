@@ -2,6 +2,7 @@
 import { existsSync, rmSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import { createInterface } from "readline";
 
 const DATA_DIR = join(homedir(), ".repodna");
 const SERVER_PORT = 3741;
@@ -39,6 +40,13 @@ if (!existsSync(DATA_DIR)) {
   process.exit(0);
 }
 
+function prompt(q) {
+  return new Promise((resolve) => {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    rl.question(q, (ans) => { rl.close(); resolve(ans); });
+  });
+}
+
 const args = process.argv.slice(2);
 const force = args.includes("--yes") || args.includes("-y");
 
@@ -48,9 +56,11 @@ if (!force) {
   console.log(
     "\n  " + D + "(your projects are untouched — only repoDNA data is removed)" + X,
   );
-  console.log("\n  Run with " + C + "--yes" + X + " to confirm:\n");
-  console.log("    " + C + "node uninstall.mjs --yes" + X + "\n");
-  process.exit(0);
+  const ans = (await prompt("\n  Proceed with uninstall? [y/N] ")).trim().toLowerCase();
+  if (ans !== "y" && ans !== "yes") {
+    console.log("  " + D + "Uninstall cancelled." + X + "\n");
+    process.exit(0);
+  }
 }
 
 try {

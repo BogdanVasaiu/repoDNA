@@ -76,7 +76,7 @@ test("schema: .schema file is read as its integer value", () => {
 });
 
 // ─── migrateStore ─────────────────────────────────────────
-test("migrate: legacy v1 store (schema 0) → INCOMPATIBLE wipe + backup", () => {
+test("migrate: legacy v1 store (schema 0) → INCOMPATIBLE wipe", () => {
   const d = freshDir();
   // Simulate a populated v1 store: config + a project cache, no .schema.
   writeFileSync(join(d, "config.json"), '{"projects":[{"projectPath":"/x"}]}');
@@ -93,11 +93,9 @@ test("migrate: legacy v1 store (schema 0) → INCOMPATIBLE wipe + backup", () =>
   assertEq(remaining, [".schema"], "store should be empty except .schema after wipe");
   assertEq(readStoreSchema(d), DATA_SCHEMA, "store should be stamped at current schema");
 
-  // The old data must be preserved in a backup dir.
-  const backup = res.events[0].backup;
-  assert(backup && existsSync(backup), "backup dir should exist");
-  assert(existsSync(join(backup, "config.json")), "backup should contain the old config.json");
-  assert(existsSync(join(backup, "projects", "abc", "results.json")), "backup should contain old caches");
+  // The wipe event carries no backup path (backup feature removed).
+  assertEq(res.events[0].kind, "wiped");
+  assert(!("backup" in res.events[0]), "wipe event should not carry a backup path");
 });
 
 test("migrate: store already at DATA_SCHEMA → COMPATIBLE, untouched", () => {

@@ -191,10 +191,12 @@ async function listVersions() {
       date: (r.published_at || "").slice(0, 10),
     }))
     .filter((r) => r.version)
+    // Only the current install and anything newer — older releases are hidden.
+    .filter((r) => compareVersions(r.version, CURRENT) >= 0)
     .sort((a, b) => compareVersions(a.version, b.version));
 
   if (rels.length === 0) {
-    console.log("\n  " + D + "No releases found." + X + "\n");
+    console.log("\n  " + D + "No newer releases found — you are on the latest version." + X + "\n");
     return;
   }
 
@@ -220,12 +222,11 @@ async function listVersions() {
     const cmp = compareVersions(r.version, CURRENT);
     let sym = " ", color = D, label = "";
     if (cmp === 0) { sym = "•"; color = B; label = "installed"; }
-    else if (cmp < 0) { sym = " "; color = D; label = "older"; }
     else {
       const a = classifyChain(CURRENT_SCHEMA, schema, entries);
       if (a.kind === "compatible")        { sym = "✓"; color = G; label = "compatible"; }
       else if (a.kind === "semi")         { sym = "⚠"; color = Y; label = "semi-compatible — data transformed"; }
-      else if (a.kind === "incompatible") { sym = "✗"; color = R; label = "incompatible — store wiped (backed up)"; }
+      else if (a.kind === "incompatible") { sym = "✗"; color = R; label = "incompatible — store wiped"; }
       else if (a.kind === "downgrade")    { sym = " "; color = D; label = "older schema"; }
       else                                { sym = "?"; color = D; label = "unknown"; }
     }
@@ -236,7 +237,7 @@ async function listVersions() {
   const vW = Math.max(7, ...rows.map((r) => r.version.length));
   console.log("");
   console.log("  " + D + "  " + "Version".padEnd(vW) + "  " + "Released".padEnd(10) + "  Data compatibility" + X);
-  console.log("  " + D + "  " + "─".repeat(vW) + "  " + "─".repeat(10) + "  ─".repeat(18) + X);
+  console.log("  " + D + "  " + "─".repeat(vW) + "  " + "─".repeat(10) + "  " + "─".repeat(18) + X);
   for (const r of rows) {
     console.log(
       "  " + r.color + r.sym + X + " " +
@@ -287,55 +288,82 @@ if (!targetArg && compareVersions(targetVersion, CURRENT) <= 0) {
   process.exit(0);
 }
 
-// ─── CHAIN ANALYSIS ────────────────────────────────────────
-process.stdout.write("  Analysing cache compatibility... ");
-let analysis = null;
-try {
-  const remotePkgText = await fetchRawAtTag(targetTag, "package.json");
-  const remotePkg = JSON.parse(remotePkgText);
-  const remoteSchema = typeof remotePkg.dataSchema === "number" ? remotePkg.dataSchema : 0;
-
-  let entries = {};
-  try {
-    const migText = await fetchRawAtTag(targetTag, "src/migrations.mjs");
-    entries = parseMigrationsModule(migText).entries;
-  } catch {
-    // Pre-2.0.0 versions don't have migrations.mjs — fall back to "incompatible
-    // if schemas differ, compatible if they match".
-    entries = {};
-  }
-  analysis = classifyChain(CURRENT_SCHEMA, remoteSchema, entries);
-  analysis.remoteSchema = remoteSchema;
-  console.log(G + "done" + X);
-} catch (e) {
-  console.log(Y + "skipped" + X + D + " (" + e.message + ")" + X);
-  analysis = { kind: "unknown", remoteSchema: -1 };
+// ─── BLOCK DOWNGRADES ──────────────────────────────────────
+// Pinning an older version than the one installed is refused outright.
+// Migrations only run forward; there is no backward path, so older code
+// reading a newer data store can misbehave or corrupt it. Reinstalling an
+// older release is a manual, deliberate act — not something the updater does.
+if (compareVersions(targetVersion, CURRENT) < 0) {
+  console.log("\n  " + R + "✗ Downgrades are not supported." + X);
+  console.log("    Target " + B + targetVersion + X + " is older than your installed version " +
+    B + CURRENT + X + ".");
+  console.log("    " + D + "repoDNA only migrates data forward — older code cannot safely read a" + X);
+  console.log("    " + D + "newer data store, and there is no backward migration." + X);
+  console.log("\n  " + D + "See available versions with " + X + C + "node update.mjs --list" + X + D + "." + X + "\n");
+  process.exit(1);
 }
+
+// ─── CHAIN ANALYSIS ────────────────────────────────────────
+process.stdout.write("  Analysing data-store compatibility... ");
+let analysis = null;
+
+// Read the target's package.json first. Every real release has one, so a
+// failure here (typically a 404) means the tag doesn't exist — refuse rather
+// than march on to a checkout that would just fail with a raw git error.
+let remotePkg = null;
+try {
+  remotePkg = JSON.parse(await fetchRawAtTag(targetTag, "package.json"));
+} catch (e) {
+  console.log(R + "failed" + X);
+  console.log("\n  " + R + "✗ Version " + targetVersion + " was not found on GitHub." + X);
+  console.log("    " + D + "(" + e.message + ")" + X);
+  console.log("\n  " + D + "Tags are like " + X + C + "v2.0" + X + D + " (not " + X + C + "v2" +
+    X + D + "). See available versions with " + X + C + "node update.mjs --list" + X + D + "." + X + "\n");
+  process.exit(1);
+}
+
+const remoteSchema = typeof remotePkg.dataSchema === "number" ? remotePkg.dataSchema : 0;
+let entries = {};
+try {
+  const migText = await fetchRawAtTag(targetTag, "src/migrations.mjs");
+  entries = parseMigrationsModule(migText).entries;
+} catch {
+  // Pre-2.0.0 versions don't have migrations.mjs — classifyChain then treats
+  // a differing schema as incompatible and a matching one as compatible.
+  entries = {};
+}
+analysis = classifyChain(CURRENT_SCHEMA, remoteSchema, entries);
+analysis.remoteSchema = remoteSchema;
+console.log(G + "done" + X);
 
 // ─── PRESENT THE PLAN ──────────────────────────────────────
-console.log("");
-if (CURRENT !== targetVersion) {
-  console.log("  Update plan: " + B + CURRENT + X + " → " + B + G + targetVersion + X);
-}
-if (releaseUrl) console.log("  " + C + releaseUrl + X);
+const LBL = 13; // label column width, keeps the block aligned
+console.log("\n  " + B + "Update plan" + X);
+console.log(D + "  ───────────────────────────────────" + X);
+console.log("  " + "Version:".padEnd(LBL) + B + CURRENT + X + " → " + B + G + targetVersion + X);
+if (releaseUrl) console.log("  " + "Release:".padEnd(LBL) + C + releaseUrl + X);
 
 if (analysis.kind === "compatible") {
-  console.log("  " + G + "✓ Data store: compatible" + X + D + " (kept as-is, no data loss)" + X);
+  console.log("  " + "Data store:".padEnd(LBL) + G + "✓ compatible" + X +
+    D + " — kept as-is, no data loss" + X);
 } else if (analysis.kind === "semi") {
-  console.log("  " + Y + "⚠ Data store: semi-compatible" + X +
-    D + " (" + analysis.steps + " migration step(s) — data transformed in place on first launch; previous store backed up)" + X);
+  console.log("  " + "Data store:".padEnd(LBL) + Y + "⚠ semi-compatible" + X +
+    D + " — " + analysis.steps + " step(s), data transformed on first launch" + X);
 } else if (analysis.kind === "incompatible") {
-  console.log("  " + R + "✗ Data store: incompatible" + X +
-    D + " (break at schema " + analysis.breakAt + " → " + (analysis.breakAt + 1) + ")" + X);
-  console.log("    On first launch your entire repoDNA store (projects, settings, caches) will be");
-  console.log("    " + B + "cleared and started from zero" + X + " — before any data is loaded.");
-  console.log("    " + D + "The previous store is preserved at ~/.repodna.incompatible-bak-<timestamp>" + X);
-  console.log("    " + D + "To stay on an earlier compatible release, pin a tag with " + X +
-    C + "--to v<version>" + X + D + " (see " + X + C + "https://github.com/" + GITHUB_REPO + "/releases" + X + D + ")." + X);
+  console.log("  " + "Data store:".padEnd(LBL) + R + "✗ incompatible" + X +
+    D + " — schema " + analysis.breakAt + " → " + (analysis.breakAt + 1) + X);
+  console.log("");
+  console.log("  " + Y + "⚠" + X + "  On first launch your entire repoDNA store (projects, settings,");
+  console.log("     caches) will be " + B + "cleared and started from zero" + X + " — before any");
+  console.log("     data is loaded.");
+  console.log("");
+  console.log("  " + D + "To stay on an earlier compatible release:" + X);
+  console.log("    " + C + "node update.mjs --list" + X + D + "             see compatible releases" + X);
+  console.log("    " + C + "node update.mjs --to v<version>" + X + D + "    pin a specific one" + X);
 } else if (analysis.kind === "downgrade") {
-  console.log("  " + Y + "⚠ Data store: target schema is older than current — store will be left untouched." + X);
+  console.log("  " + "Data store:".padEnd(LBL) + Y + "⚠ target schema is older — store left untouched" + X);
 } else {
-  console.log("  " + D + "Data store: unknown (could not analyse remote migrations)." + X);
+  console.log("  " + "Data store:".padEnd(LBL) + D + "unknown (could not analyse remote migrations)" + X);
 }
 
 // ─── CONFIRM ───────────────────────────────────────────────
@@ -368,7 +396,9 @@ if (dirty && force) {
 // ─── DO THE UPDATE ─────────────────────────────────────────
 console.log("\n  " + D + "Pulling " + targetTag + "..." + X);
 try {
-  run("git fetch origin --tags");
+  // --force so a tag that was moved/re-released upstream updates cleanly
+  // instead of being rejected with "would clobber existing tag".
+  run("git fetch origin --tags --force");
   if (targetArg) {
     // Pinned update: check out the exact tag (detached HEAD).
     run("git checkout " + targetTag);
@@ -408,9 +438,9 @@ if (stashed) {
 
 console.log("\n  " + G + "✓" + X + " Updated to " + B + G + targetVersion + X + "!");
 if (analysis.kind === "incompatible") {
-  console.log("  " + Y + "Heads-up:" + X + " your data store will be cleared from zero on first launch (previous store backed up).");
+  console.log("  " + Y + "Heads-up:" + X + " your data store will be cleared from zero on first launch.");
 } else if (analysis.kind === "semi") {
-  console.log("  " + D + "Your data store will be migrated on first launch (previous store backed up)." + X);
+  console.log("  " + D + "Your data store will be migrated on first launch." + X);
 }
 console.log("  Restart repoDNA to apply:\n");
 console.log("    " + C + "node main.mjs" + X + "\n");

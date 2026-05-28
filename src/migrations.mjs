@@ -11,7 +11,6 @@
 // one of three things:
 //
 //   MIGRATIONS[N] = null                 // breaking  → WIPE the whole store
-//                                        //             (moved aside to a backup)
 //   MIGRATIONS[N] = (dataDir) => {...}   // shape change → TRANSFORM in place
 //   MIGRATIONS[N] = (dataDir) => {}      // no-op        → COMPATIBLE (kept)
 //
@@ -25,7 +24,7 @@
 //   3. Add MIGRATIONS[DATA_SCHEMA - 1] describing the previous → new step.
 //
 // v1 (pre-2.0.0) had no .schema file and a different cache layout, so
-// MIGRATIONS[0] = null makes v1 → v2 a full wipe (with backup).
+// MIGRATIONS[0] = null makes v1 → v2 a full wipe.
 
 export const DATA_SCHEMA = 1;
 

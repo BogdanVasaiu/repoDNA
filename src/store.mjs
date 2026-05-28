@@ -5,21 +5,17 @@
 // (stale/incompatible) data.
 //
 // Behaviours, per chain step:
-//   null        → INCOMPATIBLE: move the whole store aside to a timestamped
-//                 backup and recreate it empty (true "start from zero").
+//   null        → INCOMPATIBLE: clear the whole store and recreate it empty
+//                 (true "start from zero"). No backup is kept.
 //   function    → TRANSFORM: called with the data-dir path to rewrite config
 //                 + caches in place. If it throws, fall back to a safe wipe.
 //   (all steps clear) → COMPATIBLE / SEMI: store is kept (and transformed).
-//
-// Crash safety: the only destructive op is an atomic directory rename
-// (store → backup). If the process dies mid-rename, either the original or
-// the backup exists intact — never a half-deleted store.
 //
 // All functions take an optional `dir` so the logic is unit-testable against
 // a scratch directory; in production they default to ~/.repodna.
 
 import {
-  existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, cpSync, rmSync,
+  existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync,
 } from "fs";
 import { join } from "path";
 import { homedir } from "os";
@@ -59,28 +55,14 @@ export function writeStoreSchema(v, dir = DEFAULT_DATA_DIR) {
   } catch {}
 }
 
-// Back up the whole store to a timestamped sibling dir, then empty it.
+// Clear the whole store, then recreate it empty.
 //
 // We deliberately do NOT renameSync the store directory itself: on Windows
 // that fails with EPERM for the user-profile-level dir and for OS-indexed
-// subdirectories (Search/OneDrive hold handles). Instead we recursively COPY
-// to the backup (best-effort) and DELETE each child file-by-file, which
-// succeeds where directory renames don't.
-function wipeWithBackup(dir, suffix) {
-  let backup = "";
-
-  // 1. Best-effort backup (copy). If it fails we still clear the store —
-  //    incompatible data must never reach the new version's UI.
-  try {
-    if (existsSync(dir)) {
-      backup = dir + "." + suffix + "-" + Date.now();
-      cpSync(dir, backup, { recursive: true });
-    }
-  } catch {
-    backup = "";
-  }
-
-  // 2. Delete every child of the store (survives where a dir rename fails).
+// subdirectories (Search/OneDrive hold handles). Instead we DELETE each child
+// file-by-file, which succeeds where directory renames don't.
+function wipeStore(dir) {
+  // Delete every child of the store (survives where a dir rename fails).
   try {
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
@@ -93,9 +75,8 @@ function wipeWithBackup(dir, suffix) {
     }
   } catch {}
 
-  // 3. Stamp the fresh, empty store at the current schema.
+  // Stamp the fresh, empty store at the current schema.
   writeStoreSchema(DATA_SCHEMA, dir);
-  return backup;
 }
 
 // Run the migration chain once. Returns:
@@ -118,8 +99,8 @@ export function migrateStore(dir = DEFAULT_DATA_DIR) {
     const step = MIGRATIONS[v];
 
     if (step === null || step === undefined) {
-      const backup = wipeWithBackup(dir, "incompatible-bak");
-      events.push({ kind: "wiped", from, to, reason: "incompatible", backup });
+      wipeStore(dir);
+      events.push({ kind: "wiped", from, to, reason: "incompatible" });
       return { from, to, kind: "incompatible", events };
     }
 
@@ -127,10 +108,10 @@ export function migrateStore(dir = DEFAULT_DATA_DIR) {
       step(dir);                 // transform the store in place
       events.push({ kind: "migrated", from: v, to: v + 1 });
     } catch (e) {
-      const backup = wipeWithBackup(dir, "migration-failed-bak");
+      wipeStore(dir);
       events.push({
         kind: "wiped", from, to, reason: "error",
-        error: String((e && e.message) || e), backup,
+        error: String((e && e.message) || e),
       });
       return { from, to, kind: "error", events };
     }
