@@ -62,7 +62,7 @@ repoDNA detects your project type and pre-selects what to scan. Dependencies, bu
 
 ### 04 — Configure the Analysis
 
-Choose the Ollama model, set the analysis depth (see [precision modes](#analysis-precision)), and toggle advanced options: Smart Update to skip unchanged files, and an optional file tree embedded in the output.
+Choose the Ollama model, set the analysis depth (see [precision modes](#analysis-precision)), and customize your output with Smart Update, file tree, and dependency graph options.
 
 <img src="docs/shared/assets/steps/step-04.png" alt="Step 4 — Configure" width="700">
 
@@ -107,7 +107,7 @@ Node.js · Python · Rust · Go · Ruby · PHP · Elixir · Java (Maven) · Java
 
 Unknown project types still work — source files are picked up by extension and the generic defaults handle the rest. You can also define your own inclusion and exclusion rules per project directly from the UI.
 
-> **Note on the dependency graph** — the static import parser covers every project type listed above _except_ **Swift / iOS**, which don't yet have a graph parser. The rest of the context file (overview, file tree, per-file analysis) is generated normally.
+> **Note on the dependency graph feature** — the static import parser covers every project type listed above _except_ **Swift / iOS**, which don't yet have a graph parser. The rest of the context file (overview, file tree, per-file analysis) is generated normally.
 
 ---
 
