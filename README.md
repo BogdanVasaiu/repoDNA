@@ -46,35 +46,35 @@ The entire process runs in a guided browser UI — open it, follow the steps, ge
 
 Checks whether Ollama is running and lists all locally installed models. If Ollama is not installed, the interface shows the exact install command for your platform. A curated model reference table lets you compare and pull the right model — ranked by quality, speed, and VRAM requirements.
 
-<img src="docs/shared/assets/steps/step-01.png" alt="Step 1 — Ollama Setup" width="700">
+<img src="docs/shared/assets/steps/step-01.webp" alt="Step 1 — Ollama Setup" width="700">
 
 ### 02 — Add Your Projects
 
 Register one or more local project paths with an optional description. The description is passed to the AI as context before any file is read.
 
-<img src="docs/shared/assets/steps/step-02.png" alt="Step 2 — Add Projects" width="700">
+<img src="docs/shared/assets/steps/step-02.webp" alt="Step 2 — Add Projects" width="700">
 
 ### 03 — Select What to Scan
 
 repoDNA detects your project type and pre-selects what to scan. Dependencies, build output, and binaries are automatically excluded. Every decision is visible in a file tree — you can override anything, per file or per folder. Your custom rules are saved and reused on the next run.
 
-<img src="docs/shared/assets/steps/step-03.png" alt="Step 3 — Select Files" width="700">
+<img src="docs/shared/assets/steps/step-03.webp" alt="Step 3 — Select Files" width="700">
 
 ### 04 — Configure the Analysis
 
 Choose the Ollama model, set the analysis depth (see [precision modes](#analysis-precision)), and customize your output with Smart Update, file tree, and dependency graph options.
 
-<img src="docs/shared/assets/steps/step-04.png" alt="Step 4 — Configure" width="700">
+<img src="docs/shared/assets/steps/step-04.webp" alt="Step 4 — Configure" width="700">
 
 ### 05 — Run
 
 **5.1 — Pick the output target.** Choose which AI agent's context file format to generate — CLAUDE.md, .cursorrules, copilot-instructions.md, and more.
 
-<img src="docs/shared/assets/steps/step-05-1.png" alt="Step 5.1 — Output target" width="700">
+<img src="docs/shared/assets/steps/step-05-1.webp" alt="Step 5.1 — Output target" width="700">
 
 **5.2 — Watch it run.** A live dashboard shows each file being processed, its markdown result appearing in real time, and a running activity log. Failed files can be retried individually. Each result card can be edited directly in the UI — changes are saved to the cache and the output is rebuilt from there, never by re-reading your project files.
 
-<img src="docs/shared/assets/steps/step-05-2.png" alt="Step 5.2 — Run" width="700">
+<img src="docs/shared/assets/steps/step-05-2.webp" alt="Step 5.2 — Run" width="700">
 
 ---
 
