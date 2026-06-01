@@ -1,4 +1,4 @@
-import {
+﻿import {
   readFileSync,
   writeFileSync,
   appendFileSync,
@@ -556,7 +556,7 @@ async function runAnalysis(config) {
       try {
         if (!existsSync(outputAbsDir))
           mkdirSync(outputAbsDir, { recursive: true });
-        writeFileSync(outputAbsPath, _finalMd, "utf-8");
+        writeFileSync(outputAbsPath, toFileContent(_finalMd), "utf-8");
         log("success", outputRelFile + " saved (no changes detected)");
       } catch (e) {
         log("error", "Could not write " + outputRelFile + ": " + e.message);
@@ -745,7 +745,7 @@ async function runAnalysis(config) {
   );
   try {
     if (!existsSync(outputAbsDir)) mkdirSync(outputAbsDir, { recursive: true });
-    writeFileSync(outputAbsPath, finalMd, "utf-8");
+    writeFileSync(outputAbsPath, toFileContent(finalMd), "utf-8");
     log("success", outputRelFile + " saved");
   } catch (e) {
     log("error", "Could not write " + outputRelFile + ": " + e.message);
@@ -958,7 +958,7 @@ async function _executeRetry(fileId, precisionOverride) {
         }
         var _retryMd = buildClaudeMd(catMapsToResults(_retryMaps), config, getResultFileIds(_retryMaps), config.projectPath, null);
         if (!existsSync(_retryAbsDir)) mkdirSync(_retryAbsDir, { recursive: true });
-        writeFileSync(_retryAbsPath, _retryMd, "utf-8");
+        writeFileSync(_retryAbsPath, toFileContent(_retryMd), "utf-8");
         appState.previewContent = _retryMd;
         appState.previewFinal = true;
         push("preview", { content: _retryMd, final: true });
@@ -1138,6 +1138,22 @@ function serveStatic(filePath, res) {
     return;
   }
   serveFromDir(PUBLIC_DIR, filePath, res);
+}
+
+// Convert HTML file-tree block to a plain markdown code fence for on-disk output.
+// The UI preview keeps the <pre class="file-tree-block"> for styled rendering;
+// the written file should be valid markdown without HTML.
+function toFileContent(md) {
+  return md.replace(
+    /<pre class="file-tree-block">([\s\S]*?)<\/pre>/g,
+    function (_, body) {
+      var unescaped = body
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">");
+      return "```\n" + unescaped + "\n```";
+    }
+  );
 }
 
 // ─── HTTP SERVER ──────────────────────────────────────────
@@ -1759,7 +1775,7 @@ export function startServer() {
           try {
             var urMd = buildClaudeMd(urResultsForBuild, urCfg, getResultFileIds(urRebuiltMaps), urCfg.projectPath, null);
             if (!existsSync(urAbsDir)) mkdirSync(urAbsDir, { recursive: true });
-            writeFileSync(urAbsPath, urMd, "utf-8");
+            writeFileSync(urAbsPath, toFileContent(urMd), "utf-8");
             urWroteFile = true;
             // Also refresh the live preview so the dashboard shows the rebuilt file
             appState.previewContent = urMd;
@@ -1902,7 +1918,7 @@ export function startServer() {
 
     server.listen(PORT, function () {      console.log("");
       console.log("  +------------------------------------------+");
-      console.log("  |  repoDNA is running                    |");
+      console.log("  |  repoDNA is running                      |");
       console.log("  |  Open: http://localhost:" + PORT + "             |");
       console.log("  +------------------------------------------+");
       console.log("");

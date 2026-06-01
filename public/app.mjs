@@ -1350,6 +1350,12 @@ window._retryFile = async function (fid, precision) {
 };
 
 window._stopFile = async function (fid) {
+  // Optimistic UI: immediately restore the retry button so the card doesn't
+  // stay locked on "Stop" while waiting for the server SSE confirmation.
+  S.retryingFiles.delete(fid);
+  S.fileStatuses[fid] = { status: "error", error: "Stopped", retrying: false };
+  updateFileRow(fid);
+  _refreshResultCard(fid);
   try {
     await fetch("/api/stop-file", {
       method: "POST",
